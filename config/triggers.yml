@@ -1,0 +1,322 @@
+# Border Rank Battle - Trigger Definitions
+# This file defines all available triggers in the game
+# Each trigger has properties that affect gameplay mechanics
+
+# ============================================
+# ATTACKER TRIGGERS
+# ============================================
+attackers:
+  kogetsu:
+    display_name: "Kogetsu"
+    cost: 4
+    category: "attacker"
+    minecraft_item: "NETHERITE_SWORD"
+    base_damage: 8
+    description: "High-damage sword trigger. Deals 8 damage per hit with enhanced reach."
+    attributes:
+      damage_multiplier: 1.0
+      attack_speed: 1.0
+      knockback: 0.5
+      durability: 100
+
+  scorpion:
+    display_name: "Scorpion"
+    cost: 2
+    category: "attacker"
+    minecraft_item: "GOLDEN_SWORD"
+    base_damage: 5
+    backstab_multiplier: 1.5
+    description: "Agile sword trigger. Deals increased damage from behind enemies."
+    attributes:
+      damage_multiplier: 1.0
+      attack_speed: 1.2
+      backstab_bonus: 1.5
+      knockback: 0.3
+      durability: 80
+
+  raygust:
+    display_name: "Raygust"
+    cost: 3
+    category: "attacker"
+    minecraft_item: "IRON_SWORD"
+    base_damage: 6
+    shield_mode: true
+    description: "Versatile sword trigger with defensive shield capabilities. Can switch between attack and defense modes."
+    attributes:
+      damage_multiplier: 1.0
+      attack_speed: 0.9
+      shield_strength: 0.8
+      knockback: 0.4
+      durability: 90
+
+# ============================================
+# SHOOTER TRIGGERS
+# ============================================
+shooters:
+  asteroid:
+    display_name: "Asteroid"
+    cost: 3
+    category: "shooter"
+    minecraft_item: "BOW"
+    base_damage: 4
+    description: "Basic bow trigger. Fires standard arrows with reliable accuracy."
+    attributes:
+      damage_multiplier: 1.0
+      draw_speed: 1.0
+      arrow_velocity: 1.0
+      accuracy: 0.95
+
+  meteora:
+    display_name: "Meteora"
+    cost: 4
+    category: "shooter"
+    minecraft_item: "CROSSBOW"
+    base_damage: 6
+    explosion_effect: true
+    explosion_radius: 4.0
+    explosion_damage: 5
+    description: "Explosive crossbow trigger. Fires bolts that create explosions on impact."
+    attributes:
+      damage_multiplier: 1.0
+      draw_speed: 0.8
+      bolt_velocity: 1.1
+      accuracy: 0.85
+
+  hound:
+    display_name: "Hound"
+    cost: 4
+    category: "shooter"
+    minecraft_item: "TRIDENT"
+    base_damage: 5
+    homing_effect: true
+    homing_range: 20.0
+    description: "Magical trident trigger with homing capabilities. Projectiles track targets automatically."
+    attributes:
+      damage_multiplier: 1.0
+      throw_speed: 0.9
+      homing_strength: 0.7
+      accuracy: 1.0
+
+  viper:
+    display_name: "Viper"
+    cost: 3
+    category: "shooter"
+    minecraft_item: "BOW"
+    base_damage: 4
+    curve_shots: true
+    curve_strength: 2.5
+    description: "Advanced bow trigger capable of curving shots. Projectiles curve around obstacles."
+    attributes:
+      damage_multiplier: 1.0
+      draw_speed: 0.95
+      arrow_velocity: 0.95
+      accuracy: 0.80
+
+# ============================================
+# SNIPER TRIGGERS
+# ============================================
+snipers:
+  egret:
+    display_name: "Egret"
+    cost: 4
+    category: "sniper"
+    minecraft_item: "BOW"
+    base_damage: 7
+    enchantment: "POWER_V"
+    charge_time: 2.0
+    description: "High-powered bow trigger. Requires 2 seconds of charging for maximum damage."
+    attributes:
+      damage_multiplier: 2.5
+      draw_speed: 0.7
+      arrow_velocity: 1.2
+      accuracy: 0.98
+      charge_required: true
+
+  lightning:
+    display_name: "Lightning"
+    cost: 3
+    category: "sniper"
+    minecraft_item: "BOW"
+    base_damage: 6
+    piercing_effect: true
+    piercing_count: 3
+    description: "Bow trigger with piercing arrows. Projectiles pass through multiple enemies."
+    attributes:
+      damage_multiplier: 1.2
+      draw_speed: 0.85
+      arrow_velocity: 1.15
+      accuracy: 0.92
+      piercing_arrows: 3
+
+  ibis:
+    display_name: "Ibis"
+    cost: 5
+    category: "sniper"
+    minecraft_item: "BOW"
+    base_damage: 8
+    enchantment: "POWER_MAX"
+    charge_time: 3.0
+    description: "Ultimate sniper trigger. Maximum power output with longest charge time."
+    attributes:
+      damage_multiplier: 3.0
+      draw_speed: 0.6
+      arrow_velocity: 1.3
+      accuracy: 0.99
+      charge_required: true
+
+# ============================================
+# SUPPORT TRIGGERS
+# ============================================
+support:
+  grasshopper:
+    display_name: "Grasshopper"
+    cost: 2
+    category: "support"
+    minecraft_item: "FEATHER"
+    trion_usage: 40
+    trion_type: "per_use"
+    cooldown_seconds: 8
+    description: "Jump enhancement trigger. Grants enhanced mobility and high jump capabilities."
+    attributes:
+      duration: 3.0
+      jump_multiplier: 2.5
+      cooldown: 8
+
+  shield_trigger:
+    display_name: "Shield"
+    cost: 2
+    category: "support"
+    minecraft_item: "SHIELD"
+    trion_usage: 30
+    trion_type: "per_absorption"
+    cooldown_seconds: 30
+    description: "Damage absorption trigger. Creates a protective shield that absorbs incoming damage."
+    attributes:
+      absorption_amount: 8.0
+      duration: 5.0
+      cooldown: 30
+
+  bagworm:
+    display_name: "Bagworm"
+    cost: 1
+    category: "support"
+    minecraft_item: "LEATHER_HELMET"
+    trion_usage: 15
+    trion_type: "per_second_sustain"
+    cooldown_seconds: 15
+    description: "Sustained defense trigger. Provides continuous damage reduction while active."
+    attributes:
+      damage_reduction: 0.4
+      cooldown: 15
+
+  teleporter:
+    display_name: "Teleporter"
+    cost: 3
+    category: "support"
+    minecraft_item: "ENDER_PEARL"
+    trion_usage: 60
+    trion_type: "per_use"
+    cooldown_seconds: 12
+    description: "Teleportation trigger. Instantly transport to a target location."
+    attributes:
+      range: 32.0
+      cooldown: 12
+
+  escudo:
+    display_name: "Escudo"
+    cost: 2
+    category: "support"
+    minecraft_item: "GOLD_BLOCK"
+    trion_usage: 50
+    trion_type: "per_use"
+    cooldown_seconds: 15
+    description: "Barrier creation trigger. Creates a temporary protective barrier."
+    attributes:
+      barrier_strength: 10.0
+      duration: 4.0
+      cooldown: 15
+
+  meteora_sub:
+    display_name: "Meteora Sub"
+    cost: 2
+    category: "support"
+    minecraft_item: "TNT"
+    trion_usage: 35
+    trion_type: "per_use"
+    cooldown_seconds: 10
+    description: "Explosive support trigger. Detonates explosive charges in an area."
+    attributes:
+      explosion_radius: 5.0
+      damage: 6.0
+      cooldown: 10
+
+  red_bullet:
+    display_name: "Red Bullet"
+    cost: 1
+    category: "support"
+    minecraft_item: "SPECTRAL_ARROW"
+    trion_usage: 20
+    trion_type: "per_use"
+    cooldown_seconds: 6
+    description: "Marking trigger. Reveals enemy positions to teammates."
+    attributes:
+      effect_duration: 5.0
+      visibility_range: 64.0
+      cooldown: 6
+
+  star_trigger:
+    display_name: "Star Trigger"
+    cost: 0
+    category: "support"
+    minecraft_item: "IRON_INGOT"
+    trion_usage: 0
+    trion_type: "none"
+    cooldown_seconds: 0
+    description: "Universal support trigger. No cost, serves as placeholder or emergency option."
+    attributes:
+      effect: "none"
+      cooldown: 0
+
+# ============================================
+# TRION SYSTEM CONFIGURATION
+# ============================================
+trion:
+  max_trion: 1000
+  leak_coefficient: 2.5
+  low_trion_warning: 200
+  critical_trion_warning: 100
+  bailout_threshold: 0
+  natural_regeneration: false
+  description: |
+    Trion is the energy resource used by all triggers.
+    - max_trion: Maximum trion capacity for players
+    - leak_coefficient: Rate of trion leakage during match (per minute)
+    - low_trion_warning: Player receives warning at this trion level
+    - critical_trion_warning: Critical alert threshold
+    - bailout_threshold: Minimum trion required to trigger bailout mechanism
+    - natural_regeneration: Whether trion regenerates over time (disabled for BRB)
+
+# ============================================
+# MATCH CONFIGURATION
+# ============================================
+match:
+  solo:
+    time_limit_seconds: 300
+    max_teleporters: 15
+    starting_trion: 1000
+    mode: "solo"
+    description: "Solo matches with 5-minute time limit"
+
+  team:
+    time_limit_seconds: 600
+    max_teleporters: 15
+    starting_trion: 1000
+    mode: "team"
+    description: "Team matches with 10-minute time limit"
+
+  general:
+    max_teleporters: 15
+    starting_trion: 1000
+    trion_leak_enabled: true
+    friendly_fire: false
+    describe_mode_enabled: true
