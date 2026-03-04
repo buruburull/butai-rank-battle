@@ -33,8 +33,12 @@ public class LoadoutManager {
      * @throws Exception if database operations fail
      */
     public void loadPlayerLoadouts(UUID playerId) throws Exception {
-        var loadouts = loadoutDAO.loadPlayerLoadouts(playerId);
-        playerLoadouts.put(playerId, loadouts);
+        var loadoutList = loadoutDAO.loadPlayerLoadouts(playerId);
+        Map<String, Loadout> loadoutMap = new HashMap<>();
+        for (Loadout loadout : loadoutList) {
+            loadoutMap.put(loadout.getName(), loadout);
+        }
+        playerLoadouts.put(playerId, loadoutMap);
     }
 
     /**
