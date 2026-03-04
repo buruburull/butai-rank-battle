@@ -46,7 +46,15 @@ public class RankManager {
      * @return the BRBPlayer object, or null if not found
      */
     public BRBPlayer getPlayer(UUID uuid) {
-        return playerDAO.getPlayer(uuid);
+        BRBPlayer cached = playerCache.get(uuid);
+        if (cached != null) {
+            return cached;
+        }
+        BRBPlayer player = playerDAO.getPlayer(uuid);
+        if (player != null) {
+            playerCache.put(uuid, player);
+        }
+        return player;
     }
 
     /**
@@ -359,13 +367,20 @@ public class RankManager {
         return true;
     }
 
+    private final Map<UUID, BRBPlayer> playerCache = new HashMap<>();
+
     /**
      * Creates a new player in the database.
      *
      * @param player the player to create
      */
     public void createPlayer(BRBPlayer player) {
-        // TODO: Persist to database
+        try {
+            playerDAO.savePlayer(player);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        playerCache.put(player.getUuid(), player);
     }
 
     /**
@@ -374,7 +389,11 @@ public class RankManager {
      * @param player the player to save
      */
     public void savePlayer(BRBPlayer player) {
-        // TODO: Persist to database
+        try {
+            playerDAO.savePlayer(player);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -383,7 +402,7 @@ public class RankManager {
      * @param player the player to cache
      */
     public void cachePlayer(BRBPlayer player) {
-        // TODO: Cache implementation
+        playerCache.put(player.getUuid(), player);
     }
 
     /**
@@ -392,6 +411,6 @@ public class RankManager {
      * @param playerId the UUID of the player
      */
     public void uncachePlayer(UUID playerId) {
-        // TODO: Cache removal implementation
+        playerCache.remove(playerId);
     }
 }

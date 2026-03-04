@@ -3,8 +3,10 @@ package com.borderrank.battle.manager;
 import com.borderrank.battle.model.TriggerCategory;
 import com.borderrank.battle.model.TriggerData;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.util.*;
 
 /**
@@ -23,7 +25,37 @@ public class TriggerRegistry {
      */
     public TriggerRegistry(JavaPlugin plugin) {
         this.plugin = plugin;
-        load(plugin.getConfig());
+        loadTriggersFile();
+    }
+
+    /**
+     * Loads triggers.yml from the plugin data folder.
+     * If not found, copies the default from resources.
+     */
+    private void loadTriggersFile() {
+        File triggersFile = new File(plugin.getDataFolder(), "triggers.yml");
+        if (!triggersFile.exists()) {
+            // Try to save from resources
+            try {
+                plugin.saveResource("triggers.yml", false);
+            } catch (Exception e) {
+                plugin.getLogger().warning("triggers.yml not found in resources, checking config/");
+                // Try from config/ folder in the server root
+                File configFolder = new File(plugin.getServer().getWorldContainer(), "config");
+                File altFile = new File(configFolder, "triggers.yml");
+                if (altFile.exists()) {
+                    triggersFile = altFile;
+                }
+            }
+        }
+
+        if (triggersFile.exists()) {
+            FileConfiguration triggersConfig = YamlConfiguration.loadConfiguration(triggersFile);
+            load(triggersConfig);
+            plugin.getLogger().info("Loaded " + triggers.size() + " triggers from triggers.yml");
+        } else {
+            plugin.getLogger().warning("triggers.yml not found! No triggers loaded.");
+        }
     }
 
     /**
@@ -54,21 +86,19 @@ public class TriggerRegistry {
                 TriggerData triggerData = parseTriggerData(triggerId, triggerSection);
                 triggers.put(triggerId, triggerData);
             } catch (Exception e) {
-                System.err.println("Failed to load trigger: " + triggerId);
-                e.printStackTrace();
+                plugin.getLogger().warning("Failed to load trigger: " + triggerId + " - " + e.getMessage());
             }
         }
     }
 
     /**
-     * Reloads all triggers from the plugin configuration.
+     * Reloads all triggers from the triggers.yml file.
      *
      * @return true if reload was successful, false otherwise
      */
     public boolean reloadTriggers() {
         try {
-            plugin.reloadConfig();
-            load(plugin.getConfig());
+            loadTriggersFile();
             return true;
         } catch (Exception e) {
             e.printStackTrace();
