@@ -42,7 +42,7 @@ public class DatabaseManager {
      */
     public void init() throws SQLException {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&useUnicode=true&characterEncoding=utf8mb4");
+        config.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&useUnicode=true&characterEncoding=UTF-8");
         config.setUsername(username);
         config.setPassword(password);
         config.setMaximumPoolSize(10);
