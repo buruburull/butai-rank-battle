@@ -23,7 +23,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class BRBPlugin extends JavaPlugin {
 
     private static BRBPlugin instance;
-
     private DatabaseManager databaseManager;
     private TriggerRegistry triggerRegistry;
     private LoadoutManager loadoutManager;
@@ -78,22 +77,20 @@ public class BRBPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (databaseManager != null) {
-            databaseManager.close();
-        }
+        if (databaseManager != null) databaseManager.close();
         getServer().getScheduler().cancelTasks(this);
         getLogger().info("Border Rank Battle plugin disabled!");
     }
 
     private void startTickingTasks() {
         getServer().getScheduler().scheduleSyncRepeatingTask(this, () -> {
-            if (matchManager != null) {
-                matchManager.tick();
-            }
+            if (matchManager != null) matchManager.tick();
         }, 0, 20);
 
         getServer().getScheduler().scheduleSyncRepeatingTask(this, () -> {
             if (queueManager == null || matchManager == null) return;
+
+            // Solo queue check
             java.util.Set<java.util.UUID> matched = queueManager.trySoloMatch(2);
             if (!matched.isEmpty()) {
                 int matchId = matchManager.createSoloMatch(matched, "arena_default");
@@ -102,7 +99,30 @@ public class BRBPlugin extends JavaPlugin {
                     for (java.util.UUID uuid : matched) {
                         org.bukkit.entity.Player player = getServer().getPlayer(uuid);
                         if (player != null) {
-                            com.borderrank.battle.util.MessageUtil.sendSuccessMessage(player, "マッチが見つかりました！マッチ #" + matchId);
+                            com.borderrank.battle.util.MessageUtil.sendSuccessMessage(player, "ソロマッチが見つかりました！マッチ #" + matchId);
+                        }
+                    }
+                }
+            }
+
+            // Team queue check
+            java.util.Set<Integer> matchedTeams = queueManager.tryTeamMatch(2);
+            if (!matchedTeams.isEmpty()) {
+                java.util.Map<Integer, java.util.Set<java.util.UUID>> teamData = new java.util.HashMap<>();
+                int teamNum = 1;
+                for (int teamId : matchedTeams) {
+                    teamData.put(teamNum, queueManager.getTeamMembers(teamId));
+                    teamNum++;
+                }
+                int matchId = matchManager.createTeamMatch(teamData, "arena_default");
+                if (matchId > 0) {
+                    getLogger().info("Team match #" + matchId + " created");
+                    for (java.util.Set<java.util.UUID> members : teamData.values()) {
+                        for (java.util.UUID uuid : members) {
+                            org.bukkit.entity.Player player = getServer().getPlayer(uuid);
+                            if (player != null) {
+                                com.borderrank.battle.util.MessageUtil.sendSuccessMessage(player, "チームマッチが見つかりました！マッチ #" + matchId);
+                            }
                         }
                     }
                 }

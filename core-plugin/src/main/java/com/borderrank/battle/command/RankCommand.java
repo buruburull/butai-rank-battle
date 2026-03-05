@@ -3,6 +3,7 @@ package com.borderrank.battle.command;
 import com.borderrank.battle.BRBPlugin;
 import com.borderrank.battle.manager.RankManager;
 import com.borderrank.battle.model.BRBPlayer;
+import com.borderrank.battle.model.Team;
 import com.borderrank.battle.model.WeaponRP;
 import com.borderrank.battle.util.MessageUtil;
 import org.bukkit.Bukkit;
@@ -14,6 +15,8 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 public class RankCommand implements CommandExecutor, TabCompleter {
 
@@ -24,12 +27,13 @@ public class RankCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 0) {
-            MessageUtil.sendInfoMessage(player, "Usage: /rank <solo|cancel|stats|top>");
+            MessageUtil.sendInfoMessage(player, "Usage: /rank <solo|team|cancel|stats|top>");
             return true;
         }
         String subcommand = args[0].toLowerCase();
         switch (subcommand) {
             case "solo" -> handleSolo(player);
+            case "team" -> handleTeam(player);
             case "cancel" -> handleCancel(player);
             case "stats" -> handleStats(player, args);
             case "top" -> handleTop(player, args);
@@ -40,11 +44,65 @@ public class RankCommand implements CommandExecutor, TabCompleter {
 
     private void handleSolo(Player player) {
         BRBPlugin plugin = BRBPlugin.getInstance();
+        if (plugin.getMatchManager().isInMatch(player.getUniqueId())) {
+            MessageUtil.sendErrorMessage(player, "既にマッチ中です！");
+            return;
+        }
         if (!plugin.getQueueManager().isInQueue(player.getUniqueId())) {
             plugin.getQueueManager().addToSoloQueue(player.getUniqueId());
             MessageUtil.sendSuccessMessage(player, "ソロキューに追加しました！対戦相手を待っています...");
         } else {
             MessageUtil.sendErrorMessage(player, "既にキューに入っています！");
+        }
+    }
+
+    private void handleTeam(Player player) {
+        BRBPlugin plugin = BRBPlugin.getInstance();
+        RankManager rankManager = plugin.getRankManager();
+
+        if (plugin.getMatchManager().isInMatch(player.getUniqueId())) {
+            MessageUtil.sendErrorMessage(player, "既にマッチ中です！");
+            return;
+        }
+        if (plugin.getQueueManager().isInQueue(player.getUniqueId())) {
+            MessageUtil.sendErrorMessage(player, "既にキューに入っています！");
+            return;
+        }
+
+        Team team = rankManager.getPlayerTeam(player.getUniqueId());
+        if (team == null) {
+            MessageUtil.sendErrorMessage(player, "チームに所属していません！/team create <名前> でチームを作成してください。");
+            return;
+        }
+        if (!team.isLeader(player.getUniqueId())) {
+            MessageUtil.sendErrorMessage(player, "チームリーダーのみキューに参加できます！");
+            return;
+        }
+
+        Set<UUID> members = team.getMembers();
+        if (members.size() < 2) {
+            MessageUtil.sendErrorMessage(player, "チームに最低2人必要です！/team invite <プレイヤー> でメンバーを招待してください。");
+            return;
+        }
+
+        for (UUID memberId : members) {
+            Player member = Bukkit.getPlayer(memberId);
+            if (member == null || !member.isOnline()) {
+                MessageUtil.sendErrorMessage(player, "チームメンバー全員がオンラインである必要があります！");
+                return;
+            }
+            if (plugin.getMatchManager().isInMatch(memberId)) {
+                MessageUtil.sendErrorMessage(player, member.getName() + " は既にマッチ中です！");
+                return;
+            }
+        }
+
+        int teamId = plugin.getQueueManager().addToTeamQueue(members);
+        for (UUID memberId : members) {
+            Player member = Bukkit.getPlayer(memberId);
+            if (member != null) {
+                MessageUtil.sendSuccessMessage(member, "チーム「" + team.getName() + "」でチームキューに参加しました！対戦チームを待っています...");
+            }
         }
     }
 
@@ -78,9 +136,7 @@ public class RankCommand implements CommandExecutor, TabCompleter {
         var weaponRPs = brPlayer.getWeaponRPs();
         for (var entry : weaponRPs.entrySet()) {
             var wrp = entry.getValue();
-            MessageUtil.sendInfoMessage(player,
-                entry.getKey().name() + " RP: " + wrp.getRp() +
-                " (" + wrp.getWins() + "勝 " + wrp.getLosses() + "敗)");
+            MessageUtil.sendInfoMessage(player, entry.getKey().name() + " RP: " + wrp.getRp() + " (" + wrp.getWins() + "勝 " + wrp.getLosses() + "敗)");
         }
     }
 
@@ -106,6 +162,7 @@ public class RankCommand implements CommandExecutor, TabCompleter {
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
             completions.add("solo");
+            completions.add("team");
             completions.add("cancel");
             completions.add("stats");
             completions.add("top");

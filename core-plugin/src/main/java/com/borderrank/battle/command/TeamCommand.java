@@ -113,6 +113,7 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         if (team.addMember(targetPlayer.getUniqueId())) {
+            plugin.getRankManager().registerPlayerTeam(targetPlayer.getUniqueId(), team.getName());
             MessageUtil.sendSuccessMessage(player, "Invited " + targetPlayer.getName() + " to the team!");
             MessageUtil.sendSuccessMessage(targetPlayer, "You were invited to join team: " + team.getName());
         } else {
@@ -134,6 +135,7 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         if (team.removeMember(player.getUniqueId())) {
+            plugin.getRankManager().unregisterPlayerTeam(player.getUniqueId());
             MessageUtil.sendSuccessMessage(player, "You left the team.");
 
             // If player was leader and team is now empty, delete team

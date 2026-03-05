@@ -68,6 +68,8 @@ public class RankManager {
             return false;
         }
         teams.put(team.getName(), team);
+        // Register leader in playerTeams map
+        playerTeams.put(team.getLeaderId(), team.getName());
         return true;
     }
 
@@ -97,6 +99,14 @@ public class RankManager {
      *
      * @return a list of team names
      */
+    public void registerPlayerTeam(UUID playerId, String teamName) {
+        playerTeams.put(playerId, teamName);
+    }
+
+    public void unregisterPlayerTeam(UUID playerId) {
+        playerTeams.remove(playerId);
+    }
+
     public List<String> getAllTeamNames() {
         return new ArrayList<>(teams.keySet());
     }

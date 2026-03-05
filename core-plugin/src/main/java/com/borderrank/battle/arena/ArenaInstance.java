@@ -38,6 +38,10 @@ public class ArenaInstance {
     private final Set<UUID> alivePlayers;
     private final Map<UUID, Integer> kills;
     private final Map<UUID, WeaponType> playerWeaponTypes;
+    private final Map<UUID, Integer> playerTeamId;
+    private final Map<Integer, Set<UUID>> teams;
+    private final Map<Integer, Set<UUID>> aliveTeams;
+    private final boolean isTeamMatch;
     private final String mapName;
     private final long startTime;
     private final int timeLimitSec;
@@ -54,9 +58,39 @@ public class ArenaInstance {
         this.alivePlayers = new HashSet<>();
         this.kills = new HashMap<>();
         this.playerWeaponTypes = new HashMap<>();
+        this.playerTeamId = new HashMap<>();
+        this.teams = new HashMap<>();
+        this.aliveTeams = new HashMap<>();
+        this.isTeamMatch = false;
         this.startTime = System.currentTimeMillis();
         this.countdownRemaining = 10;
         this.lastTickTime = System.currentTimeMillis();
+    }
+
+    public ArenaInstance(int matchId, String mapName, int timeLimitSec, Map<Integer, Set<UUID>> teamData) {
+        this.matchId = matchId;
+        this.mapName = mapName;
+        this.timeLimitSec = timeLimitSec;
+        this.state = ArenaState.WAITING;
+        this.players = new HashSet<>();
+        this.alivePlayers = new HashSet<>();
+        this.kills = new HashMap<>();
+        this.playerWeaponTypes = new HashMap<>();
+        this.playerTeamId = new HashMap<>();
+        this.teams = new HashMap<>(teamData);
+        this.aliveTeams = new HashMap<>();
+        this.isTeamMatch = true;
+        this.startTime = System.currentTimeMillis();
+        this.countdownRemaining = 10;
+        this.lastTickTime = System.currentTimeMillis();
+
+        for (Map.Entry<Integer, Set<UUID>> entry : teamData.entrySet()) {
+            aliveTeams.put(entry.getKey(), new HashSet<>(entry.getValue()));
+            for (UUID uuid : entry.getValue()) {
+                players.add(uuid);
+                playerTeamId.put(uuid, entry.getKey());
+            }
+        }
     }
 
     public void start() {
@@ -112,7 +146,9 @@ public class ArenaInstance {
             trionManager.initPlayer(uuid, 1000);
             player.setHealth(player.getMaxHealth());
             player.setFoodLevel(20);
-            MessageUtil.sendMessage(player, ChatColor.YELLOW + "マッチ開始！カウントダウン: " + countdownRemaining);
+
+            String teamInfo = isTeamMatch ? " [チーム" + playerTeamId.getOrDefault(uuid, 0) + "]" : "";
+            MessageUtil.sendMessage(player, ChatColor.YELLOW + "マッチ開始！" + teamInfo + " カウントダウン: " + countdownRemaining);
             spawnIndex++;
         }
 
@@ -130,12 +166,35 @@ public class ArenaInstance {
             }
         }
         alivePlayers.remove(victim);
-
         BRBPlugin.getInstance().getTrionManager().removePlayer(victim);
 
-        if (alivePlayers.size() <= 1) {
-            end();
+        if (isTeamMatch) {
+            Integer victimTeam = playerTeamId.get(victim);
+            if (victimTeam != null) {
+                Set<UUID> aliveMembers = aliveTeams.get(victimTeam);
+                if (aliveMembers != null) {
+                    aliveMembers.remove(victim);
+                    if (aliveMembers.isEmpty()) {
+                        broadcastToAll(ChatColor.RED + "チーム" + victimTeam + " 全滅！");
+                    }
+                }
+            }
+            long aliveTeamCount = aliveTeams.values().stream().filter(s -> !s.isEmpty()).count();
+            if (aliveTeamCount <= 1) {
+                end();
+            }
+        } else {
+            if (alivePlayers.size() <= 1) {
+                end();
+            }
         }
+    }
+
+    public boolean isTeammate(UUID a, UUID b) {
+        if (!isTeamMatch) return false;
+        Integer teamA = playerTeamId.get(a);
+        Integer teamB = playerTeamId.get(b);
+        return teamA != null && teamA.equals(teamB);
     }
 
     public void tick() {
@@ -153,19 +212,9 @@ public class ArenaInstance {
         countdownRemaining--;
         if (countdownRemaining <= 0) {
             state = ArenaState.ACTIVE;
-            for (UUID uuid : players) {
-                Player player = Bukkit.getPlayer(uuid);
-                if (player != null) {
-                    MessageUtil.sendSuccessMessage(player, ChatColor.BOLD + "バトル開始！");
-                }
-            }
+            broadcastToAll(ChatColor.GREEN + "" + ChatColor.BOLD + "バトル開始！");
         } else if (countdownRemaining <= 5) {
-            for (UUID uuid : players) {
-                Player player = Bukkit.getPlayer(uuid);
-                if (player != null) {
-                    MessageUtil.sendMessage(player, ChatColor.YELLOW + "" + countdownRemaining + "...");
-                }
-            }
+            broadcastToAll(ChatColor.YELLOW + "" + countdownRemaining + "...");
         }
     }
 
@@ -181,12 +230,7 @@ public class ArenaInstance {
         long elapsedSec = (System.currentTimeMillis() - startTime) / 1000;
         long remaining = timeLimitSec - elapsedSec;
         if (remaining == 60 || remaining == 30 || remaining == 10) {
-            for (UUID uuid : alivePlayers) {
-                Player player = Bukkit.getPlayer(uuid);
-                if (player != null) {
-                    MessageUtil.sendMessage(player, ChatColor.RED + "残り" + remaining + "秒！");
-                }
-            }
+            broadcastToAll(ChatColor.RED + "残り" + remaining + "秒！");
         }
         if (elapsedSec >= timeLimitSec) {
             end();
@@ -209,6 +253,16 @@ public class ArenaInstance {
             trionTickStarted = false;
         }
 
+        Location hub = Bukkit.getWorlds().get(0).getSpawnLocation();
+
+        if (isTeamMatch) {
+            endTeamMatch(rankManager, trionManager, hub);
+        } else {
+            endSoloMatch(rankManager, trionManager, hub);
+        }
+    }
+
+    private void endSoloMatch(RankManager rankManager, TrionManager trionManager, Location hub) {
         List<Map.Entry<UUID, Integer>> sortedPlayers = new ArrayList<>(kills.entrySet());
         sortedPlayers.sort((a, b) -> {
             boolean aAlive = alivePlayers.contains(a.getKey());
@@ -216,8 +270,6 @@ public class ArenaInstance {
             if (aAlive != bAlive) return bAlive ? 1 : -1;
             return Integer.compare(b.getValue(), a.getValue());
         });
-
-        Location hub = Bukkit.getWorlds().get(0).getSpawnLocation();
 
         int placement = 1;
         for (Map.Entry<UUID, Integer> entry : sortedPlayers) {
@@ -240,44 +292,79 @@ public class ArenaInstance {
             }
 
             Player player = Bukkit.getPlayer(uuid);
-            if (player != null && player.isOnline()) {
+            if (player != null && player.isOnline() && !player.isDead()) {
                 String rpText = rpGain >= 0 ? (ChatColor.GREEN + "+" + rpGain) : (ChatColor.RED + "" + rpGain);
                 MessageUtil.sendInfoMessage(player, "=== マッチ結果 ===");
                 MessageUtil.sendInfoMessage(player, "順位: #" + placement + " | キル: " + playerKills + " | RP: " + rpText);
-
-                // Only restore alive players (dead ones get restored on respawn)
-                if (!player.isDead()) {
-                    player.teleport(hub);
-                    player.setGameMode(GameMode.SURVIVAL);
-                    player.getInventory().clear();
-                    player.setHealth(player.getMaxHealth());
-                    player.setFoodLevel(20);
-                    player.setLevel(0);
-                    player.setExp(0);
-                }
+                restorePlayer(player, hub);
             }
-
             trionManager.removePlayer(uuid);
             placement++;
         }
+    }
 
-        // Send rankings to all online players
+    private void endTeamMatch(RankManager rankManager, TrionManager trionManager, Location hub) {
+        int winningTeam = -1;
+        for (Map.Entry<Integer, Set<UUID>> entry : aliveTeams.entrySet()) {
+            if (!entry.getValue().isEmpty()) {
+                winningTeam = entry.getKey();
+                break;
+            }
+        }
+
         for (UUID uuid : players) {
+            Integer teamId = playerTeamId.get(uuid);
+            boolean isWinner = teamId != null && teamId == winningTeam;
+            int playerKills = kills.getOrDefault(uuid, 0);
+            boolean survived = alivePlayers.contains(uuid);
+
+            int rpGain = rankManager.calculateTeamRP(isWinner ? 1 : 2, playerKills, survived);
+            WeaponType wt = playerWeaponTypes.getOrDefault(uuid, WeaponType.ATTACKER);
+            rankManager.addPlayerRP(uuid, wt.name(), rpGain);
+
+            var brPlayer = rankManager.getPlayer(uuid);
+            if (brPlayer != null) {
+                var wrp = brPlayer.getWeaponRP(wt);
+                if (wrp != null) {
+                    if (isWinner) wrp.setWins(wrp.getWins() + 1);
+                    else wrp.setLosses(wrp.getLosses() + 1);
+                }
+                rankManager.savePlayer(brPlayer);
+            }
+
             Player player = Bukkit.getPlayer(uuid);
             if (player != null && player.isOnline() && !player.isDead()) {
-                MessageUtil.sendInfoMessage(player, "--- ランキング ---");
-                int rank = 1;
-                for (Map.Entry<UUID, Integer> entry : sortedPlayers) {
-                    Player p = Bukkit.getPlayer(entry.getKey());
-                    String name = p != null ? p.getName() : "Unknown";
-                    String marker = alivePlayers.contains(entry.getKey()) ? " ★" : "";
-                    MessageUtil.sendInfoMessage(player, "#" + rank + " " + name + " - " + entry.getValue() + "キル" + marker);
-                    rank++;
-                }
+                String result = isWinner ? (ChatColor.GREEN + "勝利！") : (ChatColor.RED + "敗北");
+                String rpText = rpGain >= 0 ? (ChatColor.GREEN + "+" + rpGain) : (ChatColor.RED + "" + rpGain);
+                MessageUtil.sendInfoMessage(player, "=== チームマッチ結果 ===");
+                MessageUtil.sendInfoMessage(player, result + " | キル: " + playerKills + " | RP: " + rpText);
+                restorePlayer(player, hub);
+            }
+            trionManager.removePlayer(uuid);
+        }
+    }
+
+    private void restorePlayer(Player player, Location hub) {
+        player.teleport(hub);
+        player.setGameMode(GameMode.SURVIVAL);
+        player.getInventory().clear();
+        player.setHealth(player.getMaxHealth());
+        player.setFoodLevel(20);
+        player.setLevel(0);
+        player.setExp(0);
+    }
+
+    private void broadcastToAll(String message) {
+        for (UUID uuid : players) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                MessageUtil.sendMessage(player, message);
             }
         }
     }
 
+    public boolean isTeamMatch() { return isTeamMatch; }
+    public int getPlayerTeam(UUID uuid) { return playerTeamId.getOrDefault(uuid, -1); }
     public Set<UUID> getAlivePlayers() { return new HashSet<>(alivePlayers); }
     public void addPlayer(UUID uuid) { players.add(uuid); }
     public int getMatchId() { return matchId; }

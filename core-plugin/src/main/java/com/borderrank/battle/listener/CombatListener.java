@@ -25,7 +25,14 @@ public class CombatListener implements Listener {
         if (!(event.getEntity() instanceof Player victim)) return;
         if (!(event.getDamager() instanceof Player attacker)) return;
         BRBPlugin plugin = BRBPlugin.getInstance();
-        if (!plugin.getMatchManager().isInMatch(attacker.getUniqueId())) return;
+        ArenaInstance match = plugin.getMatchManager().getPlayerMatch(attacker.getUniqueId());
+        if (match == null) return;
+
+        if (match.isTeammate(attacker.getUniqueId(), victim.getUniqueId())) {
+            event.setCancelled(true);
+            return;
+        }
+
         double damage = event.getDamage();
         if (isBehind(attacker, victim)) {
             damage *= 1.5;
@@ -41,29 +48,17 @@ public class CombatListener implements Listener {
         BRBPlugin plugin = BRBPlugin.getInstance();
         ArenaInstance match = plugin.getMatchManager().getPlayerMatch(victim.getUniqueId());
         if (match == null) return;
-
-        // Record kill in match
         match.onKill(killer != null ? killer.getUniqueId() : null, victim.getUniqueId());
-
-        // Clean up drops only
         event.getDrops().clear();
         event.setDroppedExp(0);
-
-        // Mark this player for hub teleport on respawn
         matchDeaths.add(victim.getUniqueId());
-
-        // Do NOT auto-respawn. Let player press the button.
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onRespawn(PlayerRespawnEvent event) {
         Player player = event.getPlayer();
         if (!matchDeaths.remove(player.getUniqueId())) return;
-
-        // Set respawn location to world spawn (hub)
         event.setRespawnLocation(player.getWorld().getSpawnLocation());
-
-        // Clean up player state after 1 tick
         BRBPlugin plugin = BRBPlugin.getInstance();
         plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {
             player.getInventory().clear();
@@ -71,10 +66,6 @@ public class CombatListener implements Listener {
             player.setExp(0);
             MessageUtil.sendInfoMessage(player, "ベイルアウト！ロビーに戻りました。");
         }, 1L);
-    }
-
-    public static boolean isMatchDeath(UUID uuid) {
-        return matchDeaths.contains(uuid);
     }
 
     @EventHandler
