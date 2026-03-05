@@ -47,11 +47,18 @@ public class ArenaInstance {
     private final int timeLimitSec;
     private int countdownRemaining;
     private long lastTickTime;
+    // teamId -> Set<UUID>; null means solo match
+    private final Map<Integer, Set<UUID>> teamData;
 
     public ArenaInstance(int matchId, String mapName, int timeLimitSec) {
+        this(matchId, mapName, timeLimitSec, null);
+    }
+
+    public ArenaInstance(int matchId, String mapName, int timeLimitSec, Map<Integer, Set<UUID>> teamData) {
         this.matchId = matchId;
         this.mapName = mapName;
         this.timeLimitSec = timeLimitSec;
+        this.teamData = teamData != null ? new HashMap<>(teamData) : null;
         this.state = ArenaState.WAITING;
         this.players = new HashSet<>();
         this.alivePlayers = new HashSet<>();
@@ -60,6 +67,24 @@ public class ArenaInstance {
         this.startTime = System.currentTimeMillis();
         this.countdownRemaining = 10;
         this.lastTickTime = System.currentTimeMillis();
+
+        if (teamData != null) {
+            for (Set<UUID> members : teamData.values()) {
+                players.addAll(members);
+            }
+        }
+    }
+
+    /**
+     * Returns true if both players are on the same team (team match only).
+     * Always returns false in solo matches.
+     */
+    public boolean isTeammate(UUID a, UUID b) {
+        if (teamData == null) return false;
+        for (Set<UUID> members : teamData.values()) {
+            if (members.contains(a) && members.contains(b)) return true;
+        }
+        return false;
     }
 
     /**
