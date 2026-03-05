@@ -5,6 +5,7 @@ import com.borderrank.battle.database.LoadoutDAO;
 import com.borderrank.battle.database.PlayerDAO;
 import com.borderrank.battle.listener.CombatListener;
 import com.borderrank.battle.listener.PlayerConnectionListener;
+import com.borderrank.battle.listener.ProjectileListener;
 import com.borderrank.battle.listener.TriggerUseListener;
 import com.borderrank.battle.manager.LoadoutManager;
 import com.borderrank.battle.manager.MapManager;
@@ -81,6 +82,7 @@ public class BRBPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerConnectionListener(), this);
         getServer().getPluginManager().registerEvents(new CombatListener(), this);
         getServer().getPluginManager().registerEvents(new TriggerUseListener(), this);
+        getServer().getPluginManager().registerEvents(new ProjectileListener(), this);
 
         // Start ticking tasks
         startTickingTasks();

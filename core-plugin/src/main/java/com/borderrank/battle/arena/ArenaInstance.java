@@ -14,6 +14,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -133,6 +134,10 @@ public class ArenaInstance {
                                 meta.setLore(lore);
                                 item.setItemMeta(meta);
                             }
+
+                            // Apply enchantments based on trigger type
+                            applyTriggerEnchantments(item, triggerId);
+
                             player.getInventory().setItem(i, item);
                         }
                     }
@@ -334,6 +339,55 @@ public class ArenaInstance {
                     MessageUtil.sendInfoMessage(player, "#" + rank + " " + name + " - " + entry.getValue() + "キル" + marker);
                     rank++;
                 }
+            }
+        }
+    }
+
+    /**
+     * Apply trigger-specific enchantments to weapon items.
+     */
+    private void applyTriggerEnchantments(ItemStack item, String triggerId) {
+        switch (triggerId) {
+            // Sniper: Egret - POWER V (high damage charged shots)
+            case "egret" -> {
+                item.addUnsafeEnchantment(Enchantment.POWER, 5);
+            }
+            // Sniper: Lightning - Piercing (arrows pass through enemies)
+            case "lightning" -> {
+                item.addUnsafeEnchantment(Enchantment.POWER, 2);
+                item.addUnsafeEnchantment(Enchantment.PUNCH, 1);
+            }
+            // Sniper: Ibis - Max power (ultimate sniper)
+            case "ibis" -> {
+                item.addUnsafeEnchantment(Enchantment.POWER, 7);
+                item.addUnsafeEnchantment(Enchantment.PUNCH, 2);
+            }
+            // Shooter: Asteroid - Standard bow with slight power
+            case "asteroid" -> {
+                item.addUnsafeEnchantment(Enchantment.POWER, 1);
+            }
+            // Shooter: Viper - Quick fire bow
+            case "viper" -> {
+                item.addUnsafeEnchantment(Enchantment.POWER, 1);
+                item.addUnsafeEnchantment(Enchantment.FLAME, 1);
+            }
+            // Shooter: Meteora - Crossbow with multishot for AoE feel
+            case "meteora" -> {
+                item.addUnsafeEnchantment(Enchantment.MULTISHOT, 1);
+                item.addUnsafeEnchantment(Enchantment.QUICK_CHARGE, 2);
+            }
+            // Attacker: Kogetsu - Sharpness V (high damage)
+            case "kogetsu" -> {
+                item.addUnsafeEnchantment(Enchantment.SHARPNESS, 5);
+            }
+            // Attacker: Scorpion - Sharpness III + faster attack
+            case "scorpion" -> {
+                item.addUnsafeEnchantment(Enchantment.SHARPNESS, 3);
+            }
+            // Attacker: Raygust - Moderate sharpness
+            case "raygust" -> {
+                item.addUnsafeEnchantment(Enchantment.SHARPNESS, 2);
+                item.addUnsafeEnchantment(Enchantment.KNOCKBACK, 1);
             }
         }
     }
