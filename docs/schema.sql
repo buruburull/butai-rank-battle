@@ -27,9 +27,7 @@ COMMENT='Core player account and profile data';
 CREATE TABLE IF NOT EXISTS weapon_rp (
     uuid CHAR(36) NOT NULL,
     weapon_type ENUM(
-        'NETHERITE_SWORD', 'GOLDEN_SWORD', 'IRON_SWORD',
-        'BOW', 'CROSSBOW', 'TRIDENT',
-        'SHIELD', 'FEATHER', 'ENDER_PEARL', 'GOLD_BLOCK', 'TNT', 'SPECTRAL_ARROW', 'LEATHER_HELMET', 'IRON_INGOT'
+        'ATTACKER', 'SHOOTER', 'SNIPER'
     ) NOT NULL COMMENT 'Type of weapon/trigger',
     rp INT NOT NULL DEFAULT 1000 COMMENT 'Rating points for this weapon (1000 = middle rank)',
     wins INT NOT NULL DEFAULT 0 COMMENT 'Total wins with this weapon',
@@ -180,9 +178,7 @@ CREATE TABLE IF NOT EXISTS match_results (
     uuid CHAR(36) NOT NULL COMMENT 'Player UUID',
     team_id INT COMMENT 'Team ID if in team match (NULL for solo)',
     weapon_type ENUM(
-        'NETHERITE_SWORD', 'GOLDEN_SWORD', 'IRON_SWORD',
-        'BOW', 'CROSSBOW', 'TRIDENT',
-        'SHIELD', 'FEATHER', 'ENDER_PEARL', 'GOLD_BLOCK', 'TNT', 'SPECTRAL_ARROW', 'LEATHER_HELMET', 'IRON_INGOT'
+        'ATTACKER', 'SHOOTER', 'SNIPER'
     ) NOT NULL COMMENT 'Primary weapon used in match',
     loadout_hash VARCHAR(64) COMMENT 'Hash of trigger loadout used',
     kills INT NOT NULL DEFAULT 0 COMMENT 'Number of eliminations',
@@ -210,9 +206,7 @@ CREATE TABLE IF NOT EXISTS season_snapshots (
     season_id INT NOT NULL COMMENT 'Season identifier',
     uuid CHAR(36) NOT NULL COMMENT 'Player UUID',
     weapon_type ENUM(
-        'NETHERITE_SWORD', 'GOLDEN_SWORD', 'IRON_SWORD',
-        'BOW', 'CROSSBOW', 'TRIDENT',
-        'SHIELD', 'FEATHER', 'ENDER_PEARL', 'GOLD_BLOCK', 'TNT', 'SPECTRAL_ARROW', 'LEATHER_HELMET', 'IRON_INGOT'
+        'ATTACKER', 'SHOOTER', 'SNIPER'
     ) NOT NULL COMMENT 'Weapon type',
     final_rp INT NOT NULL COMMENT 'Final rating points for this weapon at season end',
     placement INT COMMENT 'Final leaderboard placement for this weapon',
