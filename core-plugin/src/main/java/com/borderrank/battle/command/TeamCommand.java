@@ -16,10 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Command handler for /team command.
- * Manages team creation and membership.
- */
 public class TeamCommand implements CommandExecutor, TabCompleter {
 
     @Override
@@ -30,7 +26,7 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            MessageUtil.sendInfoMessage(player, "Usage: /team <create|invite|leave|info>");
+            MessageUtil.sendInfoMessage(player, "Usage: /team <create|invite|accept|deny|leave|info>");
             return true;
         }
 
@@ -39,6 +35,8 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
         switch (subcommand) {
             case "create" -> handleCreate(player, args);
             case "invite" -> handleInvite(player, args);
+            case "accept" -> handleAccept(player);
+            case "deny" -> handleDeny(player);
             case "leave" -> handleLeave(player);
             case "info" -> handleInfo(player, args);
             default -> MessageUtil.sendErrorMessage(player, "Unknown subcommand: " + subcommand);
@@ -47,9 +45,6 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    /**
-     * Handle /team create command - creates a new team (requires B rank or higher).
-     */
     private void handleCreate(Player player, String[] args) {
         if (args.length < 2) {
             MessageUtil.sendErrorMessage(player, "Usage: /team create <name>");
@@ -61,31 +56,31 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
         BRBPlayer brPlayer = rankManager.getPlayer(player.getUniqueId());
 
         if (brPlayer == null) {
-            MessageUtil.sendErrorMessage(player, "Your player data was not found.");
+            MessageUtil.sendErrorMessage(player, "Player data not found.");
             return;
         }
 
-        // Check rank requirement (B rank or higher)
+        if (rankManager.getPlayerTeam(player.getUniqueId()) != null) {
+            MessageUtil.sendErrorMessage(player, "既にチームに所属しています！");
+            return;
+        }
+
         String rankTier = rankManager.getHighestRankTier(brPlayer);
         if (!isRankBOrHigher(rankTier)) {
-            MessageUtil.sendErrorMessage(player, "You need B rank or higher to create a team!");
+            MessageUtil.sendErrorMessage(player, "チーム作成にはBランク以上が必要です！");
             return;
         }
 
         String teamName = args[1];
         Team team = new Team(teamName, player.getUniqueId());
 
-        // Store team (this would typically be saved to database)
         if (rankManager.createTeam(team)) {
-            MessageUtil.sendSuccessMessage(player, "Team '" + teamName + "' created!");
+            MessageUtil.sendSuccessMessage(player, "チーム '" + teamName + "' を作成しました！");
         } else {
-            MessageUtil.sendErrorMessage(player, "Team name already exists!");
+            MessageUtil.sendErrorMessage(player, "そのチーム名は既に使われています！");
         }
     }
 
-    /**
-     * Handle /team invite command - invites a player to the team.
-     */
     private void handleInvite(Player player, String[] args) {
         if (args.length < 2) {
             MessageUtil.sendErrorMessage(player, "Usage: /team invite <player>");
@@ -97,59 +92,111 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
 
         Player targetPlayer = Bukkit.getPlayer(args[1]);
         if (targetPlayer == null) {
-            MessageUtil.sendErrorMessage(player, "Player not found: " + args[1]);
+            MessageUtil.sendErrorMessage(player, "プレイヤーが見つかりません: " + args[1]);
             return;
         }
 
         Team team = rankManager.getPlayerTeam(player.getUniqueId());
         if (team == null) {
-            MessageUtil.sendErrorMessage(player, "You are not in a team!");
+            MessageUtil.sendErrorMessage(player, "チームに所属していません！");
             return;
         }
 
         if (!team.getLeaderId().equals(player.getUniqueId())) {
-            MessageUtil.sendErrorMessage(player, "Only the team leader can invite players!");
+            MessageUtil.sendErrorMessage(player, "リーダーのみ招待できます！");
             return;
         }
 
-        if (team.addMember(targetPlayer.getUniqueId())) {
-            plugin.getRankManager().registerPlayerTeam(targetPlayer.getUniqueId(), team.getName());
-            MessageUtil.sendSuccessMessage(player, "Invited " + targetPlayer.getName() + " to the team!");
-            MessageUtil.sendSuccessMessage(targetPlayer, "You were invited to join team: " + team.getName());
-        } else {
-            MessageUtil.sendErrorMessage(player, "Failed to invite player.");
+        if (rankManager.getPlayerTeam(targetPlayer.getUniqueId()) != null) {
+            MessageUtil.sendErrorMessage(player, targetPlayer.getName() + " は既に別のチームに所属しています！");
+            return;
+        }
+
+        rankManager.addPendingInvite(targetPlayer.getUniqueId(), team.getName());
+        MessageUtil.sendSuccessMessage(player, targetPlayer.getName() + " に招待を送りました！");
+        MessageUtil.sendInfoMessage(targetPlayer, player.getName() + " からチーム " + team.getName() + " への招待が届きました！");
+        MessageUtil.sendInfoMessage(targetPlayer, "/team accept で承諾、/team deny で拒否");
+    }
+
+    private void handleAccept(Player player) {
+        BRBPlugin plugin = BRBPlugin.getInstance();
+        RankManager rankManager = plugin.getRankManager();
+
+        if (rankManager.getPlayerTeam(player.getUniqueId()) != null) {
+            MessageUtil.sendErrorMessage(player, "既にチームに所属しています！");
+            return;
+        }
+
+        String teamName = rankManager.consumePendingInvite(player.getUniqueId());
+        if (teamName == null) {
+            MessageUtil.sendErrorMessage(player, "招待がありません！");
+            return;
+        }
+
+        Team team = rankManager.getTeamByName(teamName);
+        if (team == null) {
+            MessageUtil.sendErrorMessage(player, "チームが存在しません！");
+            return;
+        }
+
+        team.addMember(player.getUniqueId());
+        rankManager.registerPlayerTeam(player.getUniqueId(), team.getName());
+        MessageUtil.sendSuccessMessage(player, "チーム " + team.getName() + " に参加しました！");
+
+        Player leader = Bukkit.getPlayer(team.getLeaderId());
+        if (leader != null) {
+            MessageUtil.sendSuccessMessage(leader, player.getName() + " がチームに参加しました！");
         }
     }
 
-    /**
-     * Handle /team leave command - removes player from their team.
-     */
+    private void handleDeny(Player player) {
+        BRBPlugin plugin = BRBPlugin.getInstance();
+        RankManager rankManager = plugin.getRankManager();
+
+        String teamName = rankManager.consumePendingInvite(player.getUniqueId());
+        if (teamName == null) {
+            MessageUtil.sendErrorMessage(player, "招待がありません！");
+            return;
+        }
+
+        MessageUtil.sendInfoMessage(player, "チーム " + teamName + " への招待を拒否しました。");
+
+        Team team = rankManager.getTeamByName(teamName);
+        if (team != null) {
+            Player leader = Bukkit.getPlayer(team.getLeaderId());
+            if (leader != null) {
+                MessageUtil.sendErrorMessage(leader, player.getName() + " が招待を拒否しました。");
+            }
+        }
+    }
+
     private void handleLeave(Player player) {
         BRBPlugin plugin = BRBPlugin.getInstance();
         RankManager rankManager = plugin.getRankManager();
 
         Team team = rankManager.getPlayerTeam(player.getUniqueId());
         if (team == null) {
-            MessageUtil.sendErrorMessage(player, "You are not in a team!");
+            MessageUtil.sendErrorMessage(player, "チームに所属していません！");
             return;
         }
 
         if (team.removeMember(player.getUniqueId())) {
-            plugin.getRankManager().unregisterPlayerTeam(player.getUniqueId());
-            MessageUtil.sendSuccessMessage(player, "You left the team.");
+            rankManager.unregisterPlayerTeam(player.getUniqueId());
+            MessageUtil.sendSuccessMessage(player, "チームを脱退しました。");
 
-            // If player was leader and team is now empty, delete team
             if (team.getMembers().isEmpty()) {
                 rankManager.deleteTeam(team.getName());
+            } else {
+                Player leader = Bukkit.getPlayer(team.getLeaderId());
+                if (leader != null) {
+                    MessageUtil.sendInfoMessage(leader, player.getName() + " がチームを脱退しました。");
+                }
             }
         } else {
-            MessageUtil.sendErrorMessage(player, "Failed to leave team.");
+            MessageUtil.sendErrorMessage(player, "リーダーは脱退できません。");
         }
     }
 
-    /**
-     * Handle /team info command - shows team information.
-     */
     private void handleInfo(Player player, String[] args) {
         BRBPlugin plugin = BRBPlugin.getInstance();
         RankManager rankManager = plugin.getRankManager();
@@ -157,33 +204,34 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
         Team team;
         if (args.length > 1) {
             team = rankManager.getTeamByName(args[1]);
-        } else {
+       } else {
             team = rankManager.getPlayerTeam(player.getUniqueId());
         }
 
         if (team == null) {
-            MessageUtil.sendErrorMessage(player, "Team not found.");
+            MessageUtil.sendErrorMessage(player, "チームが見つかりません。");
             return;
         }
 
-        MessageUtil.sendInfoMessage(player, "=== Team: " + team.getName() + " ===");
-        MessageUtil.sendInfoMessage(player, "Leader: " + Bukkit.getOfflinePlayer(team.getLeaderId()).getName());
-        MessageUtil.sendInfoMessage(player, "Members: " + team.getMembers().size());
+        MessageUtil.sendInfoMessage(player, "=== チーム: " + team.getName() + " ===");
+        MessageUtil.sendInfoMessage(player, "リーダー: " + Bukkit.getOfflinePlayer(team.getLeaderId()).getName());
+        MessageUtil.sendInfoMessage(player, "メンバー数: " + team.getMembers().size());
 
-        int totalRP = 0;
+        StringBuilder memberList = new StringBuilder();
         for (UUID memberId : team.getMembers()) {
-            BRBPlayer member = rankManager.getPlayer(memberId);
-            if (member != null) {
-                totalRP += member.getTotalRP();
+            if (memberList.length() > 0) {
+                memberList.append(", ");
+            }
+            String name = Bukkit.getOfflinePlayer(memberId).getName();
+            if (memberId.equals(team.getLeaderId())) {
+                memberList.append(name).append("[L]");
+            } else {
+                memberList.append(name);
             }
         }
-
-        MessageUtil.sendInfoMessage(player, "Team RP: " + totalRP);
+        MessageUtil.sendInfoMessage(player, "メンバー: " + memberList);
     }
 
-    /**
-     * Check if a rank is B or higher.
-     */
     private boolean isRankBOrHigher(String rankTier) {
         return rankTier.equals("S") || rankTier.equals("A") || rankTier.equals("B");
     }
@@ -195,6 +243,8 @@ public class TeamCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             completions.add("create");
             completions.add("invite");
+            completions.add("accept");
+            completions.add("deny");
             completions.add("leave");
             completions.add("info");
         } else if (args.length == 2) {

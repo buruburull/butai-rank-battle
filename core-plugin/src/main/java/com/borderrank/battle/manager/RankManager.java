@@ -17,6 +17,7 @@ public class RankManager {
     private final PlayerDAO playerDAO;
     private final Map<String, Team> teams = new HashMap<>();
     private final Map<UUID, String> playerTeams = new HashMap<>();
+    private final Map<UUID, String> pendingInvites = new HashMap<>();
 
     // RP thresholds for rank progression
     private static final int B_RANK_THRESHOLD = 1500;
@@ -105,6 +106,18 @@ public class RankManager {
 
     public void unregisterPlayerTeam(UUID playerId) {
         playerTeams.remove(playerId);
+    }
+
+    public void addPendingInvite(UUID playerId, String teamName) {
+        pendingInvites.put(playerId, teamName);
+    }
+
+    public String consumePendingInvite(UUID playerId) {
+        return pendingInvites.remove(playerId);
+    }
+
+    public boolean hasPendingInvite(UUID playerId) {
+        return pendingInvites.containsKey(playerId);
     }
 
     public List<String> getAllTeamNames() {
