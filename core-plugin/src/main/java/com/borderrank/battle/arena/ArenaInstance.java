@@ -12,8 +12,8 @@ import com.borderrank.battle.model.WeaponType;
 import com.borderrank.battle.util.MessageUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -43,6 +43,7 @@ public class ArenaInstance {
     private final int timeLimitSec;
     private int countdownRemaining;
     private long lastTickTime;
+    private boolean trionTickStarted = false;
 
     public ArenaInstance(int matchId, String mapName, int timeLimitSec) {
         this.matchId = matchId;
@@ -66,7 +67,6 @@ public class ArenaInstance {
 
         state = ArenaState.COUNTDOWN;
         alivePlayers.addAll(players);
-
         for (UUID uuid : players) {
             kills.put(uuid, 0);
         }
@@ -76,8 +76,9 @@ public class ArenaInstance {
             Player player = Bukkit.getPlayer(uuid);
             if (player == null) continue;
 
-            Location spawnLoc = new Location(player.getWorld(), spawnIndex * 10, 64, 0);
+            Location spawnLoc = player.getWorld().getHighestBlockAt(spawnIndex * 10, 0).getLocation().add(0.5, 1, 0.5);
             player.teleport(spawnLoc);
+            player.setGameMode(GameMode.SURVIVAL);
             player.getInventory().clear();
 
             Loadout loadout = loadoutManager.getLoadout(uuid, "default");
@@ -94,6 +95,7 @@ public class ArenaInstance {
                                 meta.setDisplayName(ChatColor.GREEN + td.getName());
                                 List<String> lore = new ArrayList<>();
                                 lore.add(ChatColor.GRAY + td.getDescription());
+                                lore.add(ChatColor.AQUA + "Trion: " + td.getTrionUse());
                                 meta.setLore(lore);
                                 item.setItemMeta(meta);
                             }
@@ -101,13 +103,8 @@ public class ArenaInstance {
                         }
                     }
                 }
-
                 WeaponType wt = loadoutManager.getWeaponType(loadout, triggerRegistry);
-                if (wt != null) {
-                    playerWeaponTypes.put(uuid, wt);
-                } else {
-                    playerWeaponTypes.put(uuid, WeaponType.ATTACKER);
-                }
+                playerWeaponTypes.put(uuid, wt != null ? wt : WeaponType.ATTACKER);
             } else {
                 playerWeaponTypes.put(uuid, WeaponType.ATTACKER);
             }
@@ -118,6 +115,9 @@ public class ArenaInstance {
             MessageUtil.sendMessage(player, ChatColor.YELLOW + "マッチ開始！カウントダウン: " + countdownRemaining);
             spawnIndex++;
         }
+
+        trionManager.startTickLoop(plugin, alivePlayers);
+        trionTickStarted = true;
     }
 
     public void onKill(UUID killer, UUID victim) {
@@ -130,10 +130,9 @@ public class ArenaInstance {
             }
         }
         alivePlayers.remove(victim);
-        Player victimPlayer = Bukkit.getPlayer(victim);
-        if (victimPlayer != null) {
-            MessageUtil.sendErrorMessage(victimPlayer, "ベイルアウト！観戦モードに移行します...");
-        }
+
+        BRBPlugin.getInstance().getTrionManager().removePlayer(victim);
+
         if (alivePlayers.size() <= 1) {
             end();
         }
@@ -173,7 +172,7 @@ public class ArenaInstance {
     private void tickActive(long deltaMs) {
         BRBPlugin plugin = BRBPlugin.getInstance();
         ScoreboardManager scoreboardManager = plugin.getScoreboardManager();
-        for (UUID uuid : players) {
+        for (UUID uuid : new ArrayList<>(alivePlayers)) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null) {
                 scoreboardManager.updatePlayerScore(player, kills.getOrDefault(uuid, 0));
@@ -182,7 +181,7 @@ public class ArenaInstance {
         long elapsedSec = (System.currentTimeMillis() - startTime) / 1000;
         long remaining = timeLimitSec - elapsedSec;
         if (remaining == 60 || remaining == 30 || remaining == 10) {
-            for (UUID uuid : players) {
+            for (UUID uuid : alivePlayers) {
                 Player player = Bukkit.getPlayer(uuid);
                 if (player != null) {
                     MessageUtil.sendMessage(player, ChatColor.RED + "残り" + remaining + "秒！");
@@ -199,9 +198,16 @@ public class ArenaInstance {
     }
 
     public void end() {
+        if (state == ArenaState.FINISHED || state == ArenaState.ENDING) return;
         state = ArenaState.ENDING;
         BRBPlugin plugin = BRBPlugin.getInstance();
         RankManager rankManager = plugin.getRankManager();
+        TrionManager trionManager = plugin.getTrionManager();
+
+        if (trionTickStarted) {
+            trionManager.stopTickLoop();
+            trionTickStarted = false;
+        }
 
         List<Map.Entry<UUID, Integer>> sortedPlayers = new ArrayList<>(kills.entrySet());
         sortedPlayers.sort((a, b) -> {
@@ -210,6 +216,8 @@ public class ArenaInstance {
             if (aAlive != bAlive) return bAlive ? 1 : -1;
             return Integer.compare(b.getValue(), a.getValue());
         });
+
+        Location hub = Bukkit.getWorlds().get(0).getSpawnLocation();
 
         int placement = 1;
         for (Map.Entry<UUID, Integer> entry : sortedPlayers) {
@@ -225,30 +233,38 @@ public class ArenaInstance {
             if (brPlayer != null) {
                 var wrp = brPlayer.getWeaponRP(wt);
                 if (wrp != null) {
-                    if (placement == 1) {
-                        wrp.setWins(wrp.getWins() + 1);
-                    } else {
-                        wrp.setLosses(wrp.getLosses() + 1);
-                    }
+                    if (placement == 1) wrp.setWins(wrp.getWins() + 1);
+                    else wrp.setLosses(wrp.getLosses() + 1);
                 }
                 rankManager.savePlayer(brPlayer);
             }
 
             Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
+            if (player != null && player.isOnline()) {
                 String rpText = rpGain >= 0 ? (ChatColor.GREEN + "+" + rpGain) : (ChatColor.RED + "" + rpGain);
                 MessageUtil.sendInfoMessage(player, "=== マッチ結果 ===");
                 MessageUtil.sendInfoMessage(player, "順位: #" + placement + " | キル: " + playerKills + " | RP: " + rpText);
-                player.getInventory().clear();
-                player.setHealth(player.getMaxHealth());
-                player.setFoodLevel(20);
+
+                // Only restore alive players (dead ones get restored on respawn)
+                if (!player.isDead()) {
+                    player.teleport(hub);
+                    player.setGameMode(GameMode.SURVIVAL);
+                    player.getInventory().clear();
+                    player.setHealth(player.getMaxHealth());
+                    player.setFoodLevel(20);
+                    player.setLevel(0);
+                    player.setExp(0);
+                }
             }
+
+            trionManager.removePlayer(uuid);
             placement++;
         }
 
+        // Send rankings to all online players
         for (UUID uuid : players) {
             Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
+            if (player != null && player.isOnline() && !player.isDead()) {
                 MessageUtil.sendInfoMessage(player, "--- ランキング ---");
                 int rank = 1;
                 for (Map.Entry<UUID, Integer> entry : sortedPlayers) {

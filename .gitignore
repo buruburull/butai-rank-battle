@@ -1,0 +1,23 @@
+# Build outputs
+build/
+*/build/
+*.jar
+*.class
+
+# Gradle
+.gradle/
+gradle-8.5/
+gradle.zip
+
+# IDE
+.idea/
+*.iml
+out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
