@@ -14,6 +14,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -109,8 +111,8 @@ public class ArenaInstance {
             Player player = Bukkit.getPlayer(uuid);
             if (player == null) continue;
 
-            // Teleport to spawn
-            Location spawnLoc = new Location(player.getWorld(), spawnIndex * 10, 64, 0);
+            // Teleport to spawn - find safe location on top of ground
+            Location spawnLoc = getSafeSpawnLocation(player.getWorld(), spawnIndex * 10, 0);
             player.teleport(spawnLoc);
 
             // Clear inventory
@@ -141,6 +143,27 @@ public class ArenaInstance {
                             player.getInventory().setItem(i, item);
                         }
                     }
+                }
+
+                // Give arrows/ammo if player has bow, crossbow, or trident
+                boolean needsArrows = false;
+                boolean needsTridentReturn = false;
+                for (int i = 0; i < Math.min(slots.size(), 8); i++) {
+                    String tid = slots.get(i);
+                    if (tid == null || tid.isEmpty()) continue;
+                    TriggerData tdd = triggerRegistry.get(tid);
+                    if (tdd == null) continue;
+                    Material mat = tdd.getMcItem();
+                    if (mat == Material.BOW || mat == Material.CROSSBOW) {
+                        needsArrows = true;
+                    }
+                    if (mat == Material.TRIDENT) {
+                        needsTridentReturn = true;
+                    }
+                }
+                if (needsArrows) {
+                    // Give 64 arrows in slot 8 (last hotbar slot / first non-trigger slot)
+                    player.getInventory().setItem(8, new ItemStack(Material.ARROW, 64));
                 }
 
                 // Determine weapon type for RP calculation
@@ -373,6 +396,10 @@ public class ArenaInstance {
                 item.addUnsafeEnchantment(Enchantment.POWER, 1);
                 item.addUnsafeEnchantment(Enchantment.FLAME, 1);
             }
+            // Shooter: Hound - Trident with loyalty (returns after throw) + riptide
+            case "hound" -> {
+                item.addUnsafeEnchantment(Enchantment.LOYALTY, 3);
+            }
             // Shooter: Meteora - Crossbow with multishot for AoE feel
             case "meteora" -> {
                 item.addUnsafeEnchantment(Enchantment.MULTISHOT, 1);
@@ -392,6 +419,27 @@ public class ArenaInstance {
                 item.addUnsafeEnchantment(Enchantment.KNOCKBACK, 1);
             }
         }
+    }
+
+    /**
+     * Find a safe spawn location - on top of the highest block, not inside ground.
+     */
+    private Location getSafeSpawnLocation(World world, int x, int z) {
+        // Get highest non-air block at this position
+        int highestY = world.getHighestBlockYAt(x, z);
+        Location loc = new Location(world, x + 0.5, highestY + 1.0, z + 0.5);
+
+        // Ensure the two blocks above are air (player needs 2 blocks of space)
+        Block feetBlock = loc.getBlock();
+        Block headBlock = feetBlock.getRelative(0, 1, 0);
+        if (feetBlock.getType() != Material.AIR) {
+            loc.setY(loc.getY() + 1);
+        }
+        if (headBlock.getType() != Material.AIR) {
+            loc.setY(loc.getY() + 1);
+        }
+
+        return loc;
     }
 
     public Set<UUID> getAlivePlayers() { return new HashSet<>(alivePlayers); }

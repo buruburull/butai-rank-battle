@@ -16,6 +16,7 @@ import org.bukkit.entity.SpectralArrow;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -31,6 +32,7 @@ public class TriggerUseListener implements Listener {
     private final Map<UUID, Long> triggerCooldowns = new HashMap<>();
     private final Map<UUID, Map<String, Long>> perTriggerCooldowns = new HashMap<>();
     private final Set<UUID> raygustShieldMode = new HashSet<>();
+    private final Set<UUID> bagwormActive = new HashSet<>();
     private static final long TRIGGER_COOLDOWN_MS = 500;
 
     @EventHandler
@@ -88,7 +90,25 @@ public class TriggerUseListener implements Listener {
             return;
         }
 
-        // Execute trigger by ID
+        // Weapon triggers that use Minecraft's native mechanics (bow, crossbow, trident, sword)
+        // should NOT be cancelled - let the player use them normally
+        Material heldMat = triggerData.getMcItem();
+        boolean isNativeWeapon = (heldMat == Material.BOW || heldMat == Material.CROSSBOW
+                || heldMat == Material.TRIDENT
+                || heldMat == Material.NETHERITE_SWORD || heldMat == Material.GOLDEN_SWORD
+                || heldMat == Material.IRON_SWORD);
+
+        if (isNativeWeapon) {
+            // Native weapons: consume trion on use but don't cancel the event
+            if (trionCost > 0 && trionManager.consumeTrion(player.getUniqueId(), trionCost)) {
+                player.sendActionBar(ChatColor.AQUA + triggerData.getName() + " -" + (int) trionCost + " Trion");
+                setCooldown(player.getUniqueId());
+            }
+            // Don't cancel - let bow draw, crossbow load, trident throw, sword swing work
+            return;
+        }
+
+        // Execute support/special trigger by ID
         boolean used = false;
         switch (triggerId) {
             case "grasshopper" -> used = handleGrasshopper(player, trionManager, trionCost);
@@ -100,7 +120,7 @@ public class TriggerUseListener implements Listener {
             case "red_bullet" -> used = handleRedBullet(player, trionManager, trionCost);
             case "raygust" -> used = handleRaygust(player, trionManager, trionCost);
             default -> {
-                // Weapon triggers (kogetsu, scorpion, etc) - consume trion on use
+                // Unknown support trigger
                 if (trionCost > 0 && trionManager.consumeTrion(player.getUniqueId(), trionCost)) {
                     used = true;
                     player.sendActionBar(ChatColor.AQUA + triggerData.getName() + " -" + (int) trionCost + " Trion");
@@ -222,26 +242,64 @@ public class TriggerUseListener implements Listener {
     }
 
     private boolean handleBagworm(Player player, TrionManager trionManager, String triggerId) {
-        // Toggle sustain trigger with invisibility
-        if (trionManager.getActiveSustainCount(player.getUniqueId()) > 0) {
-            trionManager.deactivateSustain(player.getUniqueId(), triggerId);
-            // Remove invisibility
-            player.removePotionEffect(PotionEffectType.INVISIBILITY);
-            player.sendActionBar(ChatColor.GRAY + "バグワーム解除");
-        } else {
-            trionManager.activateSustain(player.getUniqueId(), triggerId);
-            // Add invisibility (long duration, removed on deactivate)
-            player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 999999, 0, false, false, false));
-            player.sendActionBar(ChatColor.DARK_PURPLE + "バグワーム発動！ 透明化中... (持続消費)");
+        UUID uuid = player.getUniqueId();
+        // Activate stealth - will be auto-deactivated when player switches away
+        if (trionManager.getActiveSustainCount(uuid) > 0) {
+            // Already active, do nothing (holding bagworm = stay invisible)
+            player.sendActionBar(ChatColor.DARK_PURPLE + "バグワーム発動中...");
+            return false;
         }
+        trionManager.activateSustain(uuid, triggerId);
+        bagwormActive.add(uuid);
+        player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 999999, 0, false, false, false));
+        player.sendActionBar(ChatColor.DARK_PURPLE + "バグワーム発動！ 透明化中... (持ち替えで解除)");
         return true;
+    }
+
+    /**
+     * When player switches held item, deactivate Bagworm if it was active.
+     */
+    @EventHandler
+    public void onItemSwitch(PlayerItemHeldEvent event) {
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+
+        if (!bagwormActive.contains(uuid)) return;
+
+        BRBPlugin plugin = BRBPlugin.getInstance();
+        if (!plugin.getMatchManager().isInMatch(uuid)) return;
+
+        // Check if the new slot is still bagworm
+        LoadoutManager loadoutManager = plugin.getLoadoutManager();
+        Loadout loadout = loadoutManager.getLoadout(uuid, "default");
+        if (loadout != null) {
+            List<String> slots = loadout.getSlots();
+            int newSlot = event.getNewSlot();
+            if (newSlot < slots.size()) {
+                String newTriggerId = slots.get(newSlot);
+                if ("bagworm".equals(newTriggerId)) {
+                    return; // Still holding bagworm, keep invisible
+                }
+            }
+        }
+
+        // Switched away from bagworm - deactivate
+        deactivateBagworm(player);
     }
 
     private boolean handleMeteoraSub(Player player, TrionManager trionManager, double cost) {
         if (trionManager.consumeTrion(player.getUniqueId(), cost)) {
-            Location loc = player.getLocation().add(player.getLocation().getDirection().multiply(5));
-            player.getWorld().createExplosion(loc, 2.5F, false, false, player);
-            player.sendActionBar(ChatColor.RED + "メテオラ！ -" + (int) cost + " Trion");
+            // Launch a TNT-like projectile (snowball as carrier, explodes on impact)
+            org.bukkit.entity.Snowball projectile = player.launchProjectile(org.bukkit.entity.Snowball.class);
+            projectile.setVelocity(player.getLocation().getDirection().multiply(1.5));
+            projectile.setShooter(player);
+            // Tag it as meteora_sub for ProjectileListener to handle
+            BRBPlugin plugin = BRBPlugin.getInstance();
+            projectile.setMetadata("brb_trigger_id",
+                    new org.bukkit.metadata.FixedMetadataValue(plugin, "meteora_sub"));
+            projectile.setMetadata("brb_shooter_uuid",
+                    new org.bukkit.metadata.FixedMetadataValue(plugin, player.getUniqueId().toString()));
+            player.sendActionBar(ChatColor.RED + "メテオラ投擲！ -" + (int) cost + " Trion");
             return true;
         }
         return false;
@@ -305,6 +363,25 @@ public class TriggerUseListener implements Listener {
      */
     public void clearRaygustShieldMode(UUID uuid) {
         raygustShieldMode.remove(uuid);
+    }
+
+    /**
+     * Deactivate Bagworm stealth for a player.
+     */
+    public void deactivateBagworm(Player player) {
+        UUID uuid = player.getUniqueId();
+        if (!bagwormActive.remove(uuid)) return;
+        BRBPlugin plugin = BRBPlugin.getInstance();
+        plugin.getTrionManager().deactivateSustain(uuid, "bagworm");
+        player.removePotionEffect(PotionEffectType.INVISIBILITY);
+        player.sendActionBar(ChatColor.GRAY + "バグワーム解除（持ち替え）");
+    }
+
+    /**
+     * Clear Bagworm state when match ends.
+     */
+    public void clearBagworm(UUID uuid) {
+        bagwormActive.remove(uuid);
     }
 
     // ==========================================

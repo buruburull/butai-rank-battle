@@ -68,22 +68,37 @@ public class ProjectileListener implements Listener {
 
         switch (triggerId) {
             case "meteora" -> handleMeteoraImpact(projectile, shooter, plugin);
+            case "meteora_sub" -> handleMeteoraSubImpact(projectile, shooter, plugin);
             case "hound" -> stopHomingTask(projectile.getUniqueId());
             case "lightning" -> handleLightningPiercing(projectile, shooter, event, plugin);
         }
     }
 
     /**
-     * Meteora: Create explosion on crossbow bolt impact.
+     * Meteora (shooter crossbow): Create explosion on bolt impact (no block damage).
      */
     private void handleMeteoraImpact(Projectile projectile, Player shooter, BRBPlugin plugin) {
         ArenaInstance match = plugin.getMatchManager().getPlayerMatch(shooter.getUniqueId());
         if (match == null) return;
 
         Location impactLoc = projectile.getLocation();
-        // Create explosion (power 2.0, no fire, no block damage)
+        // Explosion without block damage (shooter weapon)
         projectile.getWorld().createExplosion(impactLoc, 2.0F, false, false, shooter);
         shooter.sendActionBar(ChatColor.RED + "メテオラ着弾！");
+        projectile.remove();
+    }
+
+    /**
+     * Meteora Sub (support): Thrown explosive with terrain destruction.
+     */
+    private void handleMeteoraSubImpact(Projectile projectile, Player shooter, BRBPlugin plugin) {
+        ArenaInstance match = plugin.getMatchManager().getPlayerMatch(shooter.getUniqueId());
+        if (match == null) return;
+
+        Location impactLoc = projectile.getLocation();
+        // Explosion WITH block damage (setBlockDamage = true)
+        projectile.getWorld().createExplosion(impactLoc, 3.0F, false, true, shooter);
+        shooter.sendActionBar(ChatColor.RED + "メテオラ・サブ着弾！ 地形破壊！");
         projectile.remove();
     }
 
