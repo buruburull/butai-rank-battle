@@ -37,7 +37,7 @@ public class RankManager {
     private static final double RP_COEFFICIENT = 1.0;
     private static final double OPPONENT_SCALING = 1.0 / 1000.0; // Divide opponent RP diff by 1000
     private static final int MIN_RP_CHANGE = 5;
-    private static final int MAX_RP_CHANGE = 60;
+    private static final int MAX_RP_CHANGE = 120;
 
     /**
      * Constructs a RankManager with database access.
