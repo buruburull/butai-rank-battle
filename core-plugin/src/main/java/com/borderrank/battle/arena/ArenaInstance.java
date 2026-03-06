@@ -1,12 +1,14 @@
 package com.borderrank.battle.arena;
 
 import com.borderrank.battle.BRBPlugin;
+import com.borderrank.battle.database.MatchDAO;
 import com.borderrank.battle.manager.LoadoutManager;
 import com.borderrank.battle.manager.RankManager;
 import com.borderrank.battle.manager.ScoreboardManager;
 import com.borderrank.battle.manager.TriggerRegistry;
 import com.borderrank.battle.manager.TrionManager;
 import com.borderrank.battle.model.Loadout;
+import com.borderrank.battle.model.Season;
 import com.borderrank.battle.model.TriggerData;
 import com.borderrank.battle.model.WeaponType;
 import com.borderrank.battle.util.MessageUtil;
@@ -52,6 +54,8 @@ public class ArenaInstance {
     private long lastTickTime;
     // teamId -> Set<UUID>; null means solo match
     private final Map<Integer, Set<UUID>> teamData;
+    // DB match_id (set after createMatch call)
+    private int dbMatchId = -1;
 
     public ArenaInstance(int matchId, String mapName, int timeLimitSec) {
         this(matchId, mapName, timeLimitSec, null);
@@ -191,6 +195,23 @@ public class ArenaInstance {
 
         // Start trion tick loop (HP leak, sustain cost, XP bar update, bailout check)
         trionManager.startTickLoop(plugin, alivePlayers);
+
+        // Record match start in DB (async to avoid blocking main thread)
+        org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                MatchDAO matchDAO = plugin.getMatchDAO();
+                if (matchDAO == null) return;
+                Season season = plugin.getRankManager().getActiveSeason();
+                int seasonId = season != null ? season.getId() : 1; // fallback to season 1
+                String matchType = (teamData != null) ? "team" : "solo";
+                dbMatchId = matchDAO.createMatch(matchType, mapName, seasonId);
+                if (dbMatchId > 0) {
+                    plugin.getLogger().info("Match #" + matchId + " recorded in DB as match_id=" + dbMatchId);
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("Failed to record match start: " + e.getMessage());
+            }
+        });
     }
 
     /**
@@ -373,6 +394,46 @@ public class ArenaInstance {
                 }
             }
         }
+
+        // Save match results to DB (async)
+        final List<Map.Entry<UUID, Integer>> finalSorted = new ArrayList<>(sortedPlayers);
+        final Set<UUID> finalAlive = new HashSet<>(alivePlayers);
+        final Map<UUID, WeaponType> finalWeapons = new HashMap<>(playerWeaponTypes);
+        final int finalDbMatchId = dbMatchId;
+
+        org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                MatchDAO matchDAO = plugin.getMatchDAO();
+                if (matchDAO == null || finalDbMatchId <= 0) return;
+
+                // Calculate duration
+                int durationSec = (int) ((System.currentTimeMillis() - startTime) / 1000);
+                matchDAO.endMatch(finalDbMatchId, durationSec);
+
+                // Save each player's result
+                int p = 1;
+                for (Map.Entry<UUID, Integer> entry : finalSorted) {
+                    UUID uuid = entry.getKey();
+                    int playerKills = entry.getValue();
+                    boolean survived = finalAlive.contains(uuid);
+                    WeaponType wt = finalWeapons.getOrDefault(uuid, WeaponType.ATTACKER);
+
+                    // Calculate RP change (same formula as above)
+                    int rpChange = rankManager.calculateTeamRP(p, playerKills, survived);
+
+                    matchDAO.insertResult(
+                        finalDbMatchId, uuid, null, wt,
+                        playerKills, survived ? 0 : 1,
+                        survived, rpChange, p
+                    );
+                    p++;
+                }
+
+                plugin.getLogger().info("Match #" + matchId + " results saved to DB (db_id=" + finalDbMatchId + ")");
+            } catch (Exception e) {
+                plugin.getLogger().warning("Failed to save match results: " + e.getMessage());
+            }
+        });
     }
 
     /**

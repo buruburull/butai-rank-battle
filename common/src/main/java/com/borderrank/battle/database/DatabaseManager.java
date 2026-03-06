@@ -117,6 +117,51 @@ public class DatabaseManager {
                     "  FOREIGN KEY (loadout_id) REFERENCES loadouts(id) ON DELETE CASCADE" +
                     ")"
             );
+
+            // Seasons table (needed before match_history FK)
+            stmt.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS seasons (" +
+                    "  season_id INT AUTO_INCREMENT PRIMARY KEY," +
+                    "  season_name VARCHAR(64) NOT NULL UNIQUE," +
+                    "  start_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+                    "  end_date TIMESTAMP NULL," +
+                    "  is_active BOOLEAN NOT NULL DEFAULT TRUE" +
+                    ")"
+            );
+
+            // Match history table
+            stmt.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS match_history (" +
+                    "  match_id INT AUTO_INCREMENT PRIMARY KEY," +
+                    "  match_type VARCHAR(10) NOT NULL," +
+                    "  map_name VARCHAR(64) NOT NULL," +
+                    "  season_id INT NOT NULL," +
+                    "  started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+                    "  ended_at TIMESTAMP NULL," +
+                    "  duration_sec INT," +
+                    "  INDEX idx_season_id (season_id)," +
+                    "  INDEX idx_started_at (started_at)" +
+                    ")"
+            );
+
+            // Match results table
+            stmt.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS match_results (" +
+                    "  result_id INT AUTO_INCREMENT PRIMARY KEY," +
+                    "  match_id INT NOT NULL," +
+                    "  uuid VARCHAR(36) NOT NULL," +
+                    "  team_id INT," +
+                    "  weapon_type VARCHAR(20) NOT NULL," +
+                    "  loadout_hash VARCHAR(64)," +
+                    "  kills INT NOT NULL DEFAULT 0," +
+                    "  deaths INT NOT NULL DEFAULT 0," +
+                    "  survived BOOLEAN NOT NULL DEFAULT FALSE," +
+                    "  rp_change INT NOT NULL DEFAULT 0," +
+                    "  placement INT," +
+                    "  INDEX idx_match_id (match_id)," +
+                    "  INDEX idx_uuid (uuid)" +
+                    ")"
+            );
         }
     }
 

@@ -1,6 +1,7 @@
 package com.borderrank.battle.command;
 
 import com.borderrank.battle.BRBPlugin;
+import com.borderrank.battle.database.MatchDAO;
 import com.borderrank.battle.manager.RankManager;
 import com.borderrank.battle.model.BRBPlayer;
 import com.borderrank.battle.model.Season;
@@ -52,6 +53,7 @@ public class RankCommand implements CommandExecutor, TabCompleter {
             case "cancel" -> handleCancel(player);
             case "stats" -> handleStats(player, args);
             case "top" -> handleTop(player, args);
+            case "history" -> handleHistory(player, args);
             default -> MessageUtil.sendErrorMessage(player, "Unknown subcommand: " + subcommand);
         }
 
@@ -326,6 +328,82 @@ public class RankCommand implements CommandExecutor, TabCompleter {
         };
     }
 
+    /**
+     * Handle /rank history [player] - shows recent match history.
+     */
+    private void handleHistory(Player player, String[] args) {
+        BRBPlugin plugin = BRBPlugin.getInstance();
+        MatchDAO matchDAO = plugin.getMatchDAO();
+
+        if (matchDAO == null) {
+            MessageUtil.sendErrorMessage(player, "マッチ履歴システムが利用できません。");
+            return;
+        }
+
+        Player targetPlayer = player;
+        if (args.length > 1) {
+            targetPlayer = Bukkit.getPlayer(args[1]);
+            if (targetPlayer == null) {
+                MessageUtil.sendErrorMessage(player, "\u00a7cプレイヤーが見つかりません: " + args[1]);
+                return;
+            }
+        }
+
+        final Player target = targetPlayer;
+        final Player viewer = player;
+
+        // Async DB query
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                List<MatchDAO.MatchRecord> records = matchDAO.getPlayerHistory(target.getUniqueId(), 10);
+
+                // Switch back to main thread for chat messages
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    MessageUtil.sendInfoMessage(viewer, "\u00a78\u00a7m----------\u00a7r \u00a7b" + target.getName() + " \u00a7fのマッチ履歴 \u00a78\u00a7m----------");
+
+                    if (records.isEmpty()) {
+                        MessageUtil.sendInfoMessage(viewer, "\u00a77マッチ履歴がありません。");
+                    } else {
+                        for (MatchDAO.MatchRecord rec : records) {
+                            String rpColor = rec.getRpChange() >= 0 ? "\u00a7a+" : "\u00a7c";
+                            String resultIcon = rec.getPlacement() == 1 ? "\u00a76\u2605" : "\u00a77\u2606";
+                            String weaponName = getWeaponShortName(rec.getWeaponType());
+                            String typeTag = rec.getMatchType().equals("team") ? "\u00a7d[T]" : "\u00a7e[S]";
+                            int mins = rec.getDurationSec() / 60;
+                            int secs = rec.getDurationSec() % 60;
+
+                            MessageUtil.sendInfoMessage(viewer,
+                                resultIcon + " " + typeTag + " \u00a7f#" + rec.getPlacement()
+                                + " \u00a77| " + weaponName
+                                + " \u00a77| \u00a7f" + rec.getKills() + "K/" + rec.getDeaths() + "D"
+                                + " \u00a77| " + rpColor + rec.getRpChange() + " RP"
+                                + " \u00a78(" + mins + ":" + String.format("%02d", secs) + ")");
+                        }
+                    }
+
+                    MessageUtil.sendInfoMessage(viewer, "\u00a78\u00a7m--------------------------------------");
+                });
+            } catch (Exception e) {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    MessageUtil.sendErrorMessage(viewer, "マッチ履歴の取得に失敗しました。");
+                });
+                e.printStackTrace();
+            }
+        });
+    }
+
+    /**
+     * Gets short weapon display name for history view.
+     */
+    private String getWeaponShortName(String weaponType) {
+        return switch (weaponType) {
+            case "ATTACKER" -> "\u00a7cATK";
+            case "SHOOTER" -> "\u00a7eSHT";
+            case "SNIPER" -> "\u00a7bSNP";
+            default -> "\u00a77???";
+        };
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
@@ -336,8 +414,9 @@ public class RankCommand implements CommandExecutor, TabCompleter {
             completions.add("cancel");
             completions.add("stats");
             completions.add("top");
+            completions.add("history");
         } else if (args.length == 2) {
-            if ("stats".equalsIgnoreCase(args[0])) {
+            if ("stats".equalsIgnoreCase(args[0]) || "history".equalsIgnoreCase(args[0])) {
                 for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
                     completions.add(onlinePlayer.getName());
                 }

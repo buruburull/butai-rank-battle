@@ -2,6 +2,7 @@ package com.borderrank.battle;
 
 import com.borderrank.battle.database.DatabaseManager;
 import com.borderrank.battle.database.LoadoutDAO;
+import com.borderrank.battle.database.MatchDAO;
 import com.borderrank.battle.database.PlayerDAO;
 import com.borderrank.battle.listener.CombatListener;
 import com.borderrank.battle.listener.PlayerConnectionListener;
@@ -38,6 +39,7 @@ public class BRBPlugin extends JavaPlugin {
     private MapManager mapManager;
     private ScoreboardManager scoreboardManager;
     private MatchManager matchManager;
+    private MatchDAO matchDAO;
 
     @Override
     public void onEnable() {
@@ -71,6 +73,7 @@ public class BRBPlugin extends JavaPlugin {
         mapManager = new MapManager(this);
         scoreboardManager = new ScoreboardManager();
         matchManager = new MatchManager();
+        matchDAO = new MatchDAO(databaseManager);
 
         // Register commands
         getCommand("rank").setExecutor(new RankCommand());
@@ -203,5 +206,12 @@ public class BRBPlugin extends JavaPlugin {
      */
     public MatchManager getMatchManager() {
         return matchManager;
+    }
+
+    /**
+     * Get the match DAO for match history persistence.
+     */
+    public MatchDAO getMatchDAO() {
+        return matchDAO;
     }
 }

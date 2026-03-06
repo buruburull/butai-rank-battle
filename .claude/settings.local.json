@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add -u)",
+      "Bash(git push origin main)"
+    ]
+  }
+}
