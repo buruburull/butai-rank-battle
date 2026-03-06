@@ -2,10 +2,16 @@ package com.borderrank.battle.manager;
 
 import com.borderrank.battle.database.PlayerDAO;
 import com.borderrank.battle.model.BRBPlayer;
+import com.borderrank.battle.model.RankClass;
 import com.borderrank.battle.model.Season;
 import com.borderrank.battle.model.Team;
 import com.borderrank.battle.model.WeaponRP;
 import com.borderrank.battle.model.WeaponType;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 
 import java.util.*;
 
@@ -496,5 +502,65 @@ public class RankManager {
      */
     public void uncachePlayer(UUID playerId) {
         playerCache.remove(playerId);
+    }
+
+    /**
+     * Recalculates and updates a player's RankClass based on their highest weapon RP.
+     * Also updates the player's tab list name if online.
+     *
+     * @param brPlayer the player to update
+     */
+    public void recalculateRank(BRBPlayer brPlayer) {
+        if (brPlayer == null) return;
+
+        int maxRP = brPlayer.getHighestRP();
+        RankClass newRank;
+        if (maxRP >= S_RANK_THRESHOLD) {
+            newRank = RankClass.S;
+        } else if (maxRP >= A_RANK_THRESHOLD) {
+            newRank = RankClass.A;
+        } else if (maxRP >= B_RANK_THRESHOLD) {
+            newRank = RankClass.B;
+        } else {
+            newRank = RankClass.C;
+        }
+        brPlayer.setRankClass(newRank);
+
+        // Update tab list name for online player
+        Player onlinePlayer = Bukkit.getPlayer(brPlayer.getUuid());
+        if (onlinePlayer != null) {
+            updateTabListName(onlinePlayer, brPlayer);
+        }
+    }
+
+    /**
+     * Updates a player's tab list display name with their rank prefix.
+     * Format: [S級] PlayerName (with rank color)
+     *
+     * @param player the online Bukkit player
+     * @param brPlayer the BRB player data
+     */
+    public void updateTabListName(Player player, BRBPlayer brPlayer) {
+        if (player == null || brPlayer == null) return;
+
+        RankClass rank = brPlayer.getRankClass();
+        Component tabName = Component.text("[" + rank.getDisplayName() + "] ", rank.getAdventureColor(), TextDecoration.BOLD)
+                .append(Component.text(player.getName(), NamedTextColor.WHITE).decoration(TextDecoration.BOLD, false));
+        player.playerListName(tabName);
+    }
+
+    /**
+     * Builds the chat prefix component for a player's rank.
+     * Format: [S級] (with rank color, bold)
+     *
+     * @param brPlayer the BRB player data
+     * @return the rank prefix Component
+     */
+    public Component buildRankPrefix(BRBPlayer brPlayer) {
+        if (brPlayer == null) {
+            return Component.text("[未所属] ", NamedTextColor.WHITE, TextDecoration.BOLD);
+        }
+        RankClass rank = brPlayer.getRankClass();
+        return Component.text("[" + rank.getDisplayName() + "] ", rank.getAdventureColor(), TextDecoration.BOLD);
     }
 }

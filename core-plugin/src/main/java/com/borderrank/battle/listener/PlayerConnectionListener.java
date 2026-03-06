@@ -47,12 +47,17 @@ public class PlayerConnectionListener implements Listener {
             // Cache the player data
             rankManager.cachePlayer(brPlayer);
 
+            // Recalculate rank from current RP
+            rankManager.recalculateRank(brPlayer);
+
             // Load trion data
             TrionManager trionManager = plugin.getTrionManager();
             trionManager.initPlayer(uuid, 1000); // Default trion value
 
-            // Notify player
+            // Notify player and set tab list name (must run on main thread)
+            final BRBPlayer finalBrPlayer = brPlayer;
             plugin.getServer().getScheduler().runTask(plugin, () -> {
+                rankManager.updateTabListName(player, finalBrPlayer);
                 MessageUtil.sendMessage(player, "Welcome to Border Rank Battle!");
                 MessageUtil.sendMessage(player, "Use /rank for ranking info, /trigger for loadouts");
             });

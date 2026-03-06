@@ -407,7 +407,7 @@ public class ArenaInstance {
             WeaponType wt = playerWeaponTypes.getOrDefault(uuid, WeaponType.ATTACKER);
             rankManager.addPlayerRP(uuid, wt.name(), rpGain);
 
-            // Save player data
+            // Save player data and update rank
             var brPlayer = rankManager.getPlayer(uuid);
             if (brPlayer != null) {
                 // Update wins/losses
@@ -419,6 +419,8 @@ public class ArenaInstance {
                         wrp.setLosses(wrp.getLosses() + 1);
                     }
                 }
+                // Recalculate rank class and update tab list name
+                rankManager.recalculateRank(brPlayer);
                 rankManager.savePlayer(brPlayer);
             }
 
