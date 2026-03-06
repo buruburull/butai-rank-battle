@@ -32,7 +32,29 @@ public class ProjectileListener implements Listener {
 
     private static final String META_TRIGGER_ID = "brb_trigger_id";
     private static final String META_SHOOTER_UUID = "brb_shooter_uuid";
+    private static final String META_DAMAGE_MULTIPLIER = "brb_damage_multiplier";
     private final Map<UUID, BukkitTask> homingTasks = new HashMap<>();
+    private final Map<UUID, BukkitTask> curveTasks = new HashMap<>();
+    // Track bow draw start time for Egret/Ibis charge mechanic
+    private final Map<UUID, Long> bowDrawStartTime = new HashMap<>();
+
+    /**
+     * Track bow draw start time for Egret/Ibis charge mechanic.
+     */
+    @EventHandler
+    public void onBowDraw(org.bukkit.event.player.PlayerInteractEvent event) {
+        if (!event.getAction().name().contains("RIGHT")) return;
+        Player player = event.getPlayer();
+        if (event.getItem() == null || event.getItem().getType() != org.bukkit.Material.BOW) return;
+
+        BRBPlugin plugin = BRBPlugin.getInstance();
+        if (!plugin.getMatchManager().isInMatch(player.getUniqueId())) return;
+
+        String triggerId = getShooterTriggerId(player);
+        if ("egret".equals(triggerId) || "ibis".equals(triggerId)) {
+            bowDrawStartTime.put(player.getUniqueId(), System.currentTimeMillis());
+        }
+    }
 
     @EventHandler
     public void onProjectileLaunch(ProjectileLaunchEvent event) {
@@ -50,9 +72,48 @@ public class ProjectileListener implements Listener {
         projectile.setMetadata(META_TRIGGER_ID, new FixedMetadataValue(plugin, triggerId));
         projectile.setMetadata(META_SHOOTER_UUID, new FixedMetadataValue(plugin, shooter.getUniqueId().toString()));
 
-        // Handle Hound homing effect
-        if ("hound".equals(triggerId) && projectile instanceof Trident trident) {
-            startHomingTask(trident, shooter);
+        // Handle trigger-specific launch effects
+        switch (triggerId) {
+            case "hound" -> {
+                if (projectile instanceof Trident trident) {
+                    startHomingTask(trident, shooter);
+                }
+            }
+            case "viper" -> {
+                if (projectile instanceof Arrow) {
+                    startCurveTask(projectile, shooter, plugin);
+                }
+            }
+            case "egret" -> {
+                // Check charge time: 2+ seconds for 2.5x damage
+                Long drawStart = bowDrawStartTime.remove(shooter.getUniqueId());
+                if (drawStart != null) {
+                    long chargeMs = System.currentTimeMillis() - drawStart;
+                    if (chargeMs >= 2000) {
+                        projectile.setMetadata(META_DAMAGE_MULTIPLIER, new FixedMetadataValue(plugin, 2.5));
+                        shooter.sendActionBar(ChatColor.AQUA + "エグレット: フルチャージ！ (2.5x)");
+                    } else {
+                        shooter.sendActionBar(ChatColor.GRAY + "エグレット: チャージ不足 (" + String.format("%.1f", chargeMs / 1000.0) + "/2.0秒)");
+                    }
+                }
+            }
+            case "ibis" -> {
+                // Check charge time: 3+ seconds for 3.0x damage
+                Long drawStart = bowDrawStartTime.remove(shooter.getUniqueId());
+                if (drawStart != null) {
+                    long chargeMs = System.currentTimeMillis() - drawStart;
+                    if (chargeMs >= 3000) {
+                        projectile.setMetadata(META_DAMAGE_MULTIPLIER, new FixedMetadataValue(plugin, 3.0));
+                        shooter.sendActionBar(ChatColor.RED + "" + ChatColor.BOLD + "アイビス: フルチャージ！！ (3.0x)");
+                    } else {
+                        shooter.sendActionBar(ChatColor.GRAY + "アイビス: チャージ不足 (" + String.format("%.1f", chargeMs / 1000.0) + "/3.0秒)");
+                    }
+                }
+            }
+            case "asteroid" -> {
+                // Asteroid: 1.2x damage multiplier
+                projectile.setMetadata(META_DAMAGE_MULTIPLIER, new FixedMetadataValue(plugin, 1.2));
+            }
         }
     }
 
@@ -70,6 +131,7 @@ public class ProjectileListener implements Listener {
             case "meteora" -> handleMeteoraImpact(projectile, shooter, plugin);
             case "meteora_sub" -> handleMeteoraSubImpact(projectile, shooter, plugin);
             case "hound" -> stopHomingTask(projectile.getUniqueId());
+            case "viper" -> stopCurveTask(projectile.getUniqueId());
             case "lightning" -> handleLightningPiercing(projectile, shooter, event, plugin);
         }
     }
@@ -198,6 +260,38 @@ public class ProjectileListener implements Listener {
     }
 
     /**
+     * Viper: Start a curve task that applies lateral velocity to the arrow.
+     * Arrow curves in a horizontal arc relative to the shooter's facing direction.
+     */
+    private void startCurveTask(Projectile projectile, Player shooter, BRBPlugin plugin) {
+        // Calculate curve direction (perpendicular to shooter's facing, horizontal)
+        Vector facing = shooter.getLocation().getDirection().setY(0).normalize();
+        // Curve right by default (cross product with up vector)
+        Vector curveDir = new Vector(-facing.getZ(), 0, facing.getX()).normalize();
+        double curveStrength = 0.08;
+
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (projectile.isDead() || projectile.isOnGround() || !projectile.isValid()) {
+                stopCurveTask(projectile.getUniqueId());
+                return;
+            }
+            // Apply lateral force
+            Vector vel = projectile.getVelocity();
+            vel.add(curveDir.clone().multiply(curveStrength));
+            projectile.setVelocity(vel);
+        }, 2L, 1L); // Start after 2 ticks, run every tick
+
+        curveTasks.put(projectile.getUniqueId(), task);
+    }
+
+    private void stopCurveTask(UUID projectileUuid) {
+        BukkitTask task = curveTasks.remove(projectileUuid);
+        if (task != null) {
+            task.cancel();
+        }
+    }
+
+    /**
      * Determine which trigger ID the player is currently using (based on held slot).
      */
     private String getShooterTriggerId(Player player) {
@@ -220,5 +314,10 @@ public class ProjectileListener implements Listener {
             task.cancel();
         }
         homingTasks.clear();
+        for (BukkitTask task : curveTasks.values()) {
+            task.cancel();
+        }
+        curveTasks.clear();
+        bowDrawStartTime.clear();
     }
 }

@@ -50,9 +50,14 @@ public class CombatListener implements Listener {
 
             double damage = event.getDamage();
 
+            // Kogetsu: 1.3x melee damage multiplier (on top of Sharpness V enchantment)
+            String heldTriggerId = getHeldTriggerId(attacker);
+            if ("kogetsu".equals(heldTriggerId)) {
+                damage *= 1.3;
+            }
+
             // Backstab check - enhanced for Scorpion
             if (isBehind(attacker, victim)) {
-                String heldTriggerId = getHeldTriggerId(attacker);
                 if ("scorpion".equals(heldTriggerId)) {
                     // Scorpion: 1.5x base backstab * 1.5x Scorpion bonus = 2.25x
                     damage *= 2.25;
@@ -86,7 +91,7 @@ public class CombatListener implements Listener {
             }
         }
 
-        // Handle Arrow damage from players (for sniper damage multiplier etc.)
+        // Handle Arrow damage from players (Egret/Ibis/Asteroid damage multiplier)
         if (event.getDamager() instanceof Arrow arrow) {
             if (arrow.getShooter() instanceof Player shooter) {
                 ArenaInstance match = plugin.getMatchManager().getPlayerMatch(shooter.getUniqueId());
@@ -95,6 +100,22 @@ public class CombatListener implements Listener {
                 if (match.isTeammate(shooter.getUniqueId(), victim.getUniqueId())) {
                     event.setCancelled(true);
                     return;
+                }
+
+                // Apply damage multiplier from ProjectileListener (Egret/Ibis/Asteroid)
+                if (arrow.hasMetadata("brb_damage_multiplier")) {
+                    double multiplier = arrow.getMetadata("brb_damage_multiplier").get(0).asDouble();
+                    event.setDamage(event.getDamage() * multiplier);
+
+                    // Notify shooter of charged hit
+                    if (arrow.hasMetadata("brb_trigger_id")) {
+                        String triggerId = arrow.getMetadata("brb_trigger_id").get(0).asString();
+                        if ("egret".equals(triggerId)) {
+                            MessageUtil.sendSuccessMessage(shooter, ChatColor.AQUA + "エグレット命中！ (" + multiplier + "x)");
+                        } else if ("ibis".equals(triggerId)) {
+                            MessageUtil.sendSuccessMessage(shooter, ChatColor.RED + "" + ChatColor.BOLD + "アイビス命中！！ (" + multiplier + "x)");
+                        }
+                    }
                 }
             }
         }
