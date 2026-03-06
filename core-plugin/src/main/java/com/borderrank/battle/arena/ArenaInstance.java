@@ -189,6 +189,10 @@ public class ArenaInstance {
             player.setHealth(player.getMaxHealth());
             player.setFoodLevel(20);
 
+            // Create match scoreboard and boss bar
+            ScoreboardManager sbManager = plugin.getScoreboardManager();
+            sbManager.createMatchScoreboard(player, mapName, timeLimitSec);
+
             MessageUtil.sendMessage(player, ChatColor.YELLOW + "マッチ開始！カウントダウン: " + countdownRemaining);
             spawnIndex++;
         }
@@ -226,6 +230,33 @@ public class ArenaInstance {
             if (killerPlayer != null && victimPlayer != null) {
                 MessageUtil.sendSuccessMessage(killerPlayer, victimPlayer.getName() + " を撃破！ (計" + kills.get(killer) + "キル)");
             }
+
+            // Kill feed: broadcast to all match participants
+            String killerName = killerPlayer != null ? killerPlayer.getName() : "???";
+            String victimName = victimPlayer != null ? victimPlayer.getName() : "???";
+            String killMsg = ChatColor.GRAY + "[" + ChatColor.RED + "\u2620" + ChatColor.GRAY + "] "
+                    + ChatColor.WHITE + killerName + ChatColor.GRAY + " \u00bb "
+                    + ChatColor.RED + victimName + ChatColor.GRAY + " (" + kills.get(killer) + " kills)";
+
+            for (UUID uuid : players) {
+                Player p = Bukkit.getPlayer(uuid);
+                if (p != null && !uuid.equals(killer)) {
+                    p.sendMessage(killMsg);
+                }
+            }
+        } else {
+            // Bailout (trion zero or other non-player kill)
+            Player victimPlayer = Bukkit.getPlayer(victim);
+            String victimName = victimPlayer != null ? victimPlayer.getName() : "???";
+            String bailoutMsg = ChatColor.GRAY + "[" + ChatColor.YELLOW + "\u26a0" + ChatColor.GRAY + "] "
+                    + ChatColor.RED + victimName + ChatColor.GRAY + " ベイルアウト！";
+
+            for (UUID uuid : players) {
+                Player p = Bukkit.getPlayer(uuid);
+                if (p != null) {
+                    p.sendMessage(bailoutMsg);
+                }
+            }
         }
 
         alivePlayers.remove(victim);
@@ -233,10 +264,19 @@ public class ArenaInstance {
         // Notify victim
         Player victimPlayer = Bukkit.getPlayer(victim);
         if (victimPlayer != null) {
-            MessageUtil.sendErrorMessage(victimPlayer, "ベイルアウト！観戦モードに移行します...");
+            MessageUtil.sendErrorMessage(victimPlayer, "ベイルアウト！ロビーに戻ります...");
         }
 
-        if (alivePlayers.size() <= 1) {
+        // Announce remaining alive count
+        int aliveCount = alivePlayers.size();
+        for (UUID uuid : players) {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null) {
+                p.sendMessage(ChatColor.AQUA + "残り " + aliveCount + " 人");
+            }
+        }
+
+        if (aliveCount <= 1) {
             end();
         }
     }
@@ -280,15 +320,25 @@ public class ArenaInstance {
     private void tickActive(long deltaMs) {
         BRBPlugin plugin = BRBPlugin.getInstance();
         ScoreboardManager scoreboardManager = plugin.getScoreboardManager();
-
-        for (UUID uuid : players) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
-                scoreboardManager.updatePlayerScore(player, kills.getOrDefault(uuid, 0));
-            }
-        }
+        TrionManager trionManager = plugin.getTrionManager();
 
         long elapsedSec = (System.currentTimeMillis() - startTime) / 1000;
+        int timeRemaining = (int) Math.max(0, timeLimitSec - elapsedSec);
+        int aliveCount = alivePlayers.size();
+
+        // Update scoreboard and boss bar for each player
+        for (UUID uuid : players) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player == null) continue;
+
+            int playerKills = kills.getOrDefault(uuid, 0);
+            double trion = trionManager.getTrion(uuid);
+            int maxTrion = trionManager.getMaxTrion(uuid);
+
+            scoreboardManager.updateFullScoreboard(player, mapName, playerKills,
+                    aliveCount, timeRemaining, trion, maxTrion);
+            scoreboardManager.updateBossBar(player, timeRemaining, timeLimitSec);
+        }
 
         // Time warnings
         long remaining = timeLimitSec - elapsedSec;
@@ -374,6 +424,9 @@ public class ArenaInstance {
                     player.setHealth(player.getMaxHealth());
                     player.setFoodLevel(20);
                 }
+
+                // Remove scoreboard and boss bar
+                plugin.getScoreboardManager().removeScoreboard(player);
             }
 
             placement++;
