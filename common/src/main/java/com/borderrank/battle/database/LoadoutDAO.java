@@ -12,28 +12,22 @@ import java.util.UUID;
 
 /**
  * Data access object for loadout database operations.
+ * Schema: player_loadouts(loadout_id, uuid, loadout_name, slot_1..slot_8, total_cost, created_at, last_modified)
  */
 public class LoadoutDAO {
     private final DatabaseManager dbManager;
 
-    /**
-     * Constructs a LoadoutDAO instance.
-     *
-     * @param dbManager the database manager
-     */
     public LoadoutDAO(DatabaseManager dbManager) {
         this.dbManager = dbManager;
     }
 
     /**
      * Loads all loadouts for a player from the database.
-     *
-     * @param playerId the player's UUID
-     * @return a list of loadouts
      */
     public List<Loadout> loadPlayerLoadouts(UUID playerId) {
         List<Loadout> loadouts = new ArrayList<>();
-        String sql = "SELECT loadout_name, slots FROM player_loadouts WHERE player_uuid = ?";
+        String sql = "SELECT loadout_name, slot_1, slot_2, slot_3, slot_4, slot_5, slot_6, slot_7, slot_8 " +
+                     "FROM player_loadouts WHERE uuid = ?";
 
         try (Connection conn = dbManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -42,8 +36,11 @@ public class LoadoutDAO {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String name = rs.getString("loadout_name");
-                    String slotsStr = rs.getString("slots");
-                    String[] slots = slotsStr != null ? slotsStr.split(",", -1) : new String[8];
+                    String[] slots = new String[8];
+                    for (int i = 0; i < 8; i++) {
+                        String val = rs.getString("slot_" + (i + 1));
+                        slots[i] = val != null ? val : "";
+                    }
                     Loadout loadout = new Loadout(playerId, name, slots);
                     loadouts.add(loadout);
                 }
@@ -56,19 +53,29 @@ public class LoadoutDAO {
     }
 
     /**
-     * Saves a loadout to the database.
-     *
-     * @param loadout the loadout to save
+     * Saves a loadout to the database (INSERT or UPDATE on duplicate).
      */
     public void saveLoadout(Loadout loadout) {
-        String sql = "INSERT INTO player_loadouts (player_uuid, loadout_name, slots) VALUES (?, ?, ?) " +
-                     "ON DUPLICATE KEY UPDATE slots = VALUES(slots)";
+        String sql = "INSERT INTO player_loadouts (uuid, loadout_name, slot_1, slot_2, slot_3, slot_4, slot_5, slot_6, slot_7, slot_8, total_cost) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                     "ON DUPLICATE KEY UPDATE " +
+                     "slot_1 = VALUES(slot_1), slot_2 = VALUES(slot_2), slot_3 = VALUES(slot_3), slot_4 = VALUES(slot_4), " +
+                     "slot_5 = VALUES(slot_5), slot_6 = VALUES(slot_6), slot_7 = VALUES(slot_7), slot_8 = VALUES(slot_8), " +
+                     "total_cost = VALUES(total_cost)";
 
         try (Connection conn = dbManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, loadout.getPlayerUuid().toString());
             stmt.setString(2, loadout.getName());
-            stmt.setString(3, String.join(",", loadout.getSlots()));
+
+            List<String> slots = loadout.getSlots();
+            for (int i = 0; i < 8; i++) {
+                String val = (i < slots.size()) ? slots.get(i) : "";
+                // Store empty strings as NULL for foreign key compatibility
+                stmt.setString(3 + i, (val != null && !val.isEmpty()) ? val : null);
+            }
+
+            stmt.setInt(11, loadout.getTotalCost());
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -77,12 +84,9 @@ public class LoadoutDAO {
 
     /**
      * Deletes a loadout from the database.
-     *
-     * @param playerId the player's UUID
-     * @param name the loadout name
      */
     public void deleteLoadout(UUID playerId, String name) {
-        String sql = "DELETE FROM player_loadouts WHERE player_uuid = ? AND loadout_name = ?";
+        String sql = "DELETE FROM player_loadouts WHERE uuid = ? AND loadout_name = ?";
 
         try (Connection conn = dbManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
