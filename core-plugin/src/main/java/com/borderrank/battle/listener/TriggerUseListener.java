@@ -90,13 +90,13 @@ public class TriggerUseListener implements Listener {
             return;
         }
 
-        // Weapon triggers that use Minecraft's native mechanics (bow, crossbow, trident, sword)
+        // Weapon triggers that use Minecraft's native right-click mechanics (bow draw, crossbow load, trident throw)
         // should NOT be cancelled - let the player use them normally
+        // Note: Swords are NOT included - they have no native right-click mechanic,
+        // and Raygust (IRON_SWORD) needs right-click for shield toggle
         Material heldMat = triggerData.getMcItem();
         boolean isNativeWeapon = (heldMat == Material.BOW || heldMat == Material.CROSSBOW
-                || heldMat == Material.TRIDENT
-                || heldMat == Material.NETHERITE_SWORD || heldMat == Material.GOLDEN_SWORD
-                || heldMat == Material.IRON_SWORD);
+                || heldMat == Material.TRIDENT);
 
         if (isNativeWeapon) {
             // Native weapons: consume trion on use but don't cancel the event
@@ -119,6 +119,8 @@ public class TriggerUseListener implements Listener {
             case "meteora_sub" -> used = handleMeteoraSub(player, trionManager, trionCost);
             case "red_bullet" -> used = handleRedBullet(player, trionManager, trionCost);
             case "raygust" -> used = handleRaygust(player, trionManager, trionCost);
+            // Melee weapons - no right-click ability, ignore
+            case "kogetsu", "scorpion" -> { /* no right-click action for melee triggers */ }
             default -> {
                 // Unknown support trigger
                 if (trionCost > 0 && trionManager.consumeTrion(player.getUniqueId(), trionCost)) {

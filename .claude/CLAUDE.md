@@ -2,6 +2,13 @@
 - すべての応答、説明、確認メッセージは日本語で出力すること
 - Yes/Noの選択肢を提示する際も日本語で説明すること
 
+## 開発フロー
+- 実装完了後、必ずテスト手順（Minecraftで確認すべきコマンドや動作）を日本語で提示すること
+- テスト手順は番号付きリストで、具体的なコマンド例を含めること
+- テスト完了後、次にやるべきタスクの候補を提示すること
+- git push用のコマンドも毎回提示すること（git add -u → git commit → git push origin main）
+- 実装中にエラーが出た場合は自動で修正し、修正内容を説明すること
+
 # Border Rank Battle (BRB) - Project Documentation
 
 ## Project Overview

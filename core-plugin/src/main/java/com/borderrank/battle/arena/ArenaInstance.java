@@ -162,8 +162,9 @@ public class ArenaInstance {
                     }
                 }
                 if (needsArrows) {
-                    // Give 64 arrows in slot 8 (last hotbar slot / first non-trigger slot)
-                    player.getInventory().setItem(8, new ItemStack(Material.ARROW, 64));
+                    // Give 64 arrows in slot 9 (main inventory, not hotbar - avoids trigger slot conflict)
+                    // Bows/crossbows auto-pull arrows from anywhere in inventory
+                    player.getInventory().setItem(9, new ItemStack(Material.ARROW, 64));
                 }
 
                 // Determine weapon type for RP calculation
@@ -187,6 +188,9 @@ public class ArenaInstance {
             MessageUtil.sendMessage(player, ChatColor.YELLOW + "マッチ開始！カウントダウン: " + countdownRemaining);
             spawnIndex++;
         }
+
+        // Start trion tick loop (HP leak, sustain cost, XP bar update, bailout check)
+        trionManager.startTickLoop(plugin, alivePlayers);
     }
 
     /**
@@ -293,6 +297,9 @@ public class ArenaInstance {
 
         BRBPlugin plugin = BRBPlugin.getInstance();
         RankManager rankManager = plugin.getRankManager();
+
+        // Stop trion tick loop
+        plugin.getTrionManager().stopTickLoop();
 
         // Sort by kills descending, then by alive status
         List<Map.Entry<UUID, Integer>> sortedPlayers = new ArrayList<>(kills.entrySet());
