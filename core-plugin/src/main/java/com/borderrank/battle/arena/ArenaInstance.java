@@ -62,6 +62,8 @@ public class ArenaInstance {
     private int dbMatchId = -1;
     // Practice mode flag (no RP changes, no DB recording)
     private boolean practice = false;
+    // Spectators watching this match (not participants)
+    private final Set<UUID> spectators = new HashSet<>();
 
     public ArenaInstance(int matchId, MapData mapData, int timeLimitSec) {
         this(matchId, mapData, timeLimitSec, null);
@@ -541,6 +543,17 @@ public class ArenaInstance {
             }
         }
 
+        // Return all spectators to hub
+        for (UUID specUuid : spectators) {
+            Player spec = Bukkit.getPlayer(specUuid);
+            if (spec != null) {
+                spec.setGameMode(GameMode.ADVENTURE);
+                spec.teleport(spec.getWorld().getSpawnLocation());
+                MessageUtil.sendInfoMessage(spec, "マッチが終了しました。ロビーに戻ります。");
+            }
+        }
+        spectators.clear();
+
         // Save match results to DB (async) - skip for practice
         if (practice) return;
         final List<Map.Entry<UUID, Integer>> finalSorted = new ArrayList<>(sortedPlayers);
@@ -664,4 +677,54 @@ public class ArenaInstance {
     public BlockTracker getBlockTracker() { return blockTracker; }
     public boolean isPractice() { return practice; }
     public void setPractice(boolean practice) { this.practice = practice; }
+    public Set<UUID> getSpectators() { return new HashSet<>(spectators); }
+
+    /**
+     * Add a spectator to this match. Teleports them to the map and sets spectator mode.
+     */
+    public void addSpectator(UUID uuid) {
+        spectators.add(uuid);
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return;
+
+        // Teleport to map spawn point 0
+        World mapWorld = Bukkit.getWorld(mapData.getWorldName());
+        if (mapWorld == null) mapWorld = Bukkit.getWorlds().get(0);
+        Location spawnLoc = mapData.getSpawnPoint(0, mapWorld);
+        if (spawnLoc == null) {
+            spawnLoc = new Location(mapWorld, 0.5, mapWorld.getHighestBlockYAt(0, 0) + 1.0, 0.5);
+        }
+        player.teleport(spawnLoc);
+        player.setGameMode(GameMode.SPECTATOR);
+        MessageUtil.sendInfoMessage(player, ChatColor.AQUA + "観戦モード - マッチ #" + matchId + " (" + mapData.getDisplayName() + ")");
+        MessageUtil.sendInfoMessage(player, ChatColor.GRAY + "/rank spectate leave で観戦を終了");
+
+        // Notify match players
+        for (UUID pid : players) {
+            Player p = Bukkit.getPlayer(pid);
+            if (p != null) {
+                MessageUtil.sendInfoMessage(p, ChatColor.GRAY + player.getName() + " が観戦を開始しました");
+            }
+        }
+    }
+
+    /**
+     * Remove a spectator from this match. Returns them to hub.
+     */
+    public void removeSpectator(UUID uuid) {
+        spectators.remove(uuid);
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return;
+
+        player.setGameMode(GameMode.ADVENTURE);
+        player.teleport(player.getWorld().getSpawnLocation());
+        MessageUtil.sendInfoMessage(player, "観戦を終了しました。");
+    }
+
+    /**
+     * Check if a player is spectating this match.
+     */
+    public boolean isSpectator(UUID uuid) {
+        return spectators.contains(uuid);
+    }
 }

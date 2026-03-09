@@ -79,6 +79,12 @@ public class PlayerConnectionListener implements Listener {
         // Remove from queue if in queue
         plugin.getQueueManager().removePlayer(uuid);
 
+        // Remove from spectating if spectating
+        com.borderrank.battle.arena.ArenaInstance specMatch = plugin.getMatchManager().getSpectatingMatch(uuid);
+        if (specMatch != null) {
+            specMatch.removeSpectator(uuid);
+        }
+
         // Save player data asynchronously
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             BRBPlayer brPlayer = rankManager.getPlayer(uuid);

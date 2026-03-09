@@ -9,7 +9,7 @@ website: https://github.com/your-org/border-rank-battle
 commands:
   rank:
     description: ランク戦関連コマンド
-    usage: /rank <solo|team|practice|cancel|stats|top|history>
+    usage: /rank <solo|team|practice|cancel|stats|top|history|spectate>
   trigger:
     description: トリガーセット管理
     usage: /trigger <set|remove|list|view|preset>

@@ -73,6 +73,23 @@ public class MatchManager {
         }
     }
 
+    /**
+     * Gets the match a player is spectating, or null if not spectating.
+     */
+    public ArenaInstance getSpectatingMatch(UUID uuid) {
+        for (ArenaInstance arena : activeMatches.values()) {
+            if (arena.isSpectator(uuid)) return arena;
+        }
+        return null;
+    }
+
+    /**
+     * Check if a player is spectating any match.
+     */
+    public boolean isSpectating(UUID uuid) {
+        return getSpectatingMatch(uuid) != null;
+    }
+
     public ArenaInstance getMatch(int matchId) { return activeMatches.get(matchId); }
     public java.util.Collection<ArenaInstance> getAllActiveMatches() { return activeMatches.values(); }
     public int getActiveMatchCount() { return activeMatches.size(); }

@@ -56,6 +56,7 @@ public class RankCommand implements CommandExecutor, TabCompleter {
             case "stats" -> handleStats(player, args);
             case "top" -> handleTop(player, args);
             case "history" -> handleHistory(player, args);
+            case "spectate" -> handleSpectate(player, args);
             default -> MessageUtil.sendErrorMessage(player, "Unknown subcommand: " + subcommand);
         }
 
@@ -347,6 +348,83 @@ public class RankCommand implements CommandExecutor, TabCompleter {
     }
 
     /**
+     * Handle /rank spectate [leave|matchId] - spectate a match.
+     */
+    private void handleSpectate(Player player, String[] args) {
+        BRBPlugin plugin = BRBPlugin.getInstance();
+        com.borderrank.battle.arena.MatchManager matchManager = plugin.getMatchManager();
+
+        // Already in a match as participant
+        if (matchManager.isInMatch(player.getUniqueId())) {
+            MessageUtil.sendErrorMessage(player, "マッチ参加中は観戦できません！");
+            return;
+        }
+
+        // /rank spectate leave - stop spectating
+        if (args.length > 1 && "leave".equalsIgnoreCase(args[1])) {
+            com.borderrank.battle.arena.ArenaInstance specMatch = matchManager.getSpectatingMatch(player.getUniqueId());
+            if (specMatch != null) {
+                specMatch.removeSpectator(player.getUniqueId());
+            } else {
+                MessageUtil.sendErrorMessage(player, "現在観戦していません。");
+            }
+            return;
+        }
+
+        // Already spectating
+        if (matchManager.isSpectating(player.getUniqueId())) {
+            MessageUtil.sendErrorMessage(player, "既に観戦中です！/rank spectate leave で終了してください。");
+            return;
+        }
+
+        // In queue
+        if (plugin.getQueueManager().isInQueue(player.getUniqueId())) {
+            MessageUtil.sendErrorMessage(player, "キュー待機中は観戦できません。先に /rank cancel でキャンセルしてください。");
+            return;
+        }
+
+        // /rank spectate <matchId> - spectate specific match
+        if (args.length > 1) {
+            try {
+                int matchId = Integer.parseInt(args[1]);
+                com.borderrank.battle.arena.ArenaInstance match = matchManager.getMatch(matchId);
+                if (match == null || match.getState() == com.borderrank.battle.arena.ArenaInstance.ArenaState.FINISHED) {
+                    MessageUtil.sendErrorMessage(player, "マッチ #" + matchId + " は存在しないか、既に終了しています。");
+                    return;
+                }
+                match.addSpectator(player.getUniqueId());
+                return;
+            } catch (NumberFormatException e) {
+                // Not a number, fall through to auto-select
+            }
+        }
+
+        // /rank spectate - auto-select an active match
+        java.util.Collection<com.borderrank.battle.arena.ArenaInstance> activeMatches = matchManager.getAllActiveMatches();
+        if (activeMatches.isEmpty()) {
+            MessageUtil.sendErrorMessage(player, "現在進行中のマッチがありません。");
+            return;
+        }
+
+        // Pick the first active match
+        com.borderrank.battle.arena.ArenaInstance match = null;
+        for (com.borderrank.battle.arena.ArenaInstance m : activeMatches) {
+            if (m.getState() == com.borderrank.battle.arena.ArenaInstance.ArenaState.ACTIVE
+                || m.getState() == com.borderrank.battle.arena.ArenaInstance.ArenaState.COUNTDOWN) {
+                match = m;
+                break;
+            }
+        }
+
+        if (match == null) {
+            MessageUtil.sendErrorMessage(player, "現在観戦可能なマッチがありません。");
+            return;
+        }
+
+        match.addSpectator(player.getUniqueId());
+    }
+
+    /**
      * Handle /rank history [player] - shows recent match history.
      */
     private void handleHistory(Player player, String[] args) {
@@ -474,8 +552,11 @@ public class RankCommand implements CommandExecutor, TabCompleter {
             completions.add("stats");
             completions.add("top");
             completions.add("history");
+            completions.add("spectate");
         } else if (args.length == 2) {
-            if ("stats".equalsIgnoreCase(args[0]) || "history".equalsIgnoreCase(args[0])) {
+            if ("spectate".equalsIgnoreCase(args[0])) {
+                completions.add("leave");
+            } else if ("stats".equalsIgnoreCase(args[0]) || "history".equalsIgnoreCase(args[0])) {
                 for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
                     completions.add(onlinePlayer.getName());
                 }
