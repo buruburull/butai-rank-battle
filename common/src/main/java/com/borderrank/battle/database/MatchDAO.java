@@ -8,7 +8,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -171,6 +173,53 @@ public class MatchDAO {
     }
 
     /**
+     * Gets participant names for a list of match IDs.
+     *
+     * @param matchIds the list of match IDs
+     * @return map of matchId -> list of MatchParticipant (uuid, playerName, kills, deaths, placement)
+     */
+    public Map<Integer, List<MatchParticipant>> getMatchParticipants(List<Integer> matchIds) throws SQLException {
+        if (matchIds.isEmpty()) return new HashMap<>();
+
+        // Build IN clause
+        StringBuilder placeholders = new StringBuilder();
+        for (int i = 0; i < matchIds.size(); i++) {
+            if (i > 0) placeholders.append(",");
+            placeholders.append("?");
+        }
+
+        String sql = "SELECT mr.match_id, mr.uuid, p.player_name, mr.kills, mr.deaths, mr.placement "
+                   + "FROM match_results mr "
+                   + "JOIN players p ON mr.uuid = p.uuid "
+                   + "WHERE mr.match_id IN (" + placeholders + ") "
+                   + "ORDER BY mr.match_id, mr.placement ASC";
+
+        Map<Integer, List<MatchParticipant>> result = new HashMap<>();
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            for (int i = 0; i < matchIds.size(); i++) {
+                stmt.setInt(i + 1, matchIds.get(i));
+            }
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int matchId = rs.getInt("match_id");
+                    result.computeIfAbsent(matchId, k -> new ArrayList<>()).add(
+                        new MatchParticipant(
+                            rs.getString("uuid"),
+                            rs.getString("player_name"),
+                            rs.getInt("kills"),
+                            rs.getInt("deaths"),
+                            rs.getInt("placement")
+                        )
+                    );
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * Gets total match count and stats.
      */
     public MatchStats getMatchStats() throws SQLException {
@@ -244,6 +293,31 @@ public class MatchDAO {
         public int getSoloMatches() { return soloMatches; }
         public int getTeamMatches() { return teamMatches; }
         public int getAvgDurationSec() { return avgDurationSec; }
+    }
+
+    /**
+     * Participant info for a match.
+     */
+    public static class MatchParticipant {
+        private final String uuid;
+        private final String playerName;
+        private final int kills;
+        private final int deaths;
+        private final int placement;
+
+        public MatchParticipant(String uuid, String playerName, int kills, int deaths, int placement) {
+            this.uuid = uuid;
+            this.playerName = playerName;
+            this.kills = kills;
+            this.deaths = deaths;
+            this.placement = placement;
+        }
+
+        public String getUuid() { return uuid; }
+        public String getPlayerName() { return playerName; }
+        public int getKills() { return kills; }
+        public int getDeaths() { return deaths; }
+        public int getPlacement() { return placement; }
     }
 
     /**

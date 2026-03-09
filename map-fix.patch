@@ -1,0 +1,140 @@
+diff --git a/core-plugin/src/main/java/com/borderrank/battle/BRBPlugin.java b/core-plugin/src/main/java/com/borderrank/battle/BRBPlugin.java
+index 3689b41..46118dd 100644
+--- a/core-plugin/src/main/java/com/borderrank/battle/BRBPlugin.java
++++ b/core-plugin/src/main/java/com/borderrank/battle/BRBPlugin.java
+@@ -74,6 +74,12 @@ public class BRBPlugin extends JavaPlugin {
+         rankManager = new RankManager(new PlayerDAO(databaseManager));
+         queueManager = new QueueManager();
+         mapManager = new MapManager(this);
++        // Load maps from the same triggers.yml that TriggerRegistry found
++        if (triggerRegistry.getResolvedTriggersFile() != null) {
++            mapManager.loadMaps(triggerRegistry.getResolvedTriggersFile());
++        } else {
++            getLogger().warning("TriggerRegistry did not resolve triggers.yml - maps not loaded.");
++        }
+         scoreboardManager = new ScoreboardManager();
+         matchManager = new MatchManager();
+         matchDAO = new MatchDAO(databaseManager);
+diff --git a/core-plugin/src/main/java/com/borderrank/battle/manager/MapManager.java b/core-plugin/src/main/java/com/borderrank/battle/manager/MapManager.java
+index 679d8a0..006fb92 100644
+--- a/core-plugin/src/main/java/com/borderrank/battle/manager/MapManager.java
++++ b/core-plugin/src/main/java/com/borderrank/battle/manager/MapManager.java
+@@ -21,21 +21,21 @@ public class MapManager {
+ 
+     public MapManager(JavaPlugin plugin) {
+         this.plugin = plugin;
+-        loadMaps();
+     }
+ 
+     /**
+-     * Loads map definitions from config/triggers.yml maps section.
++     * Loads map definitions from a FileConfiguration (triggers.yml).
++     * Called by BRBPlugin after TriggerRegistry has resolved the triggers.yml file.
+      */
+-    public void loadMaps() {
++    public void loadMaps(File triggersFile) {
+         mapRegistry.clear();
+ 
+-        File triggersFile = new File(plugin.getDataFolder().getParentFile().getParentFile(), "config/triggers.yml");
+-        if (!triggersFile.exists()) {
+-            plugin.getLogger().warning("triggers.yml not found, no maps loaded.");
++        if (triggersFile == null || !triggersFile.exists()) {
++            plugin.getLogger().warning("[MapManager] triggers.yml file not provided or not found, no maps loaded.");
+             return;
+         }
+ 
++        plugin.getLogger().info("[MapManager] Loading maps from: " + triggersFile.getAbsolutePath());
+         FileConfiguration config = YamlConfiguration.loadConfiguration(triggersFile);
+         ConfigurationSection mapsSection = config.getConfigurationSection("maps");
+         if (mapsSection == null) {
+@@ -205,9 +205,14 @@ public class MapManager {
+     }
+ 
+     /**
+-     * Reload maps from config.
++     * Reload maps from config. Resolves triggers.yml the same way TriggerRegistry does.
+      */
+     public void reloadMaps() {
+-        loadMaps();
++        File triggersFile = new File(plugin.getDataFolder(), "triggers.yml");
++        if (!triggersFile.exists()) {
++            File configFolder = new File(plugin.getServer().getWorldContainer(), "config");
++            triggersFile = new File(configFolder, "triggers.yml");
++        }
++        loadMaps(triggersFile);
+     }
+ }
+diff --git a/core-plugin/src/main/java/com/borderrank/battle/manager/TriggerRegistry.java b/core-plugin/src/main/java/com/borderrank/battle/manager/TriggerRegistry.java
+index 3050988..a851fd0 100644
+--- a/core-plugin/src/main/java/com/borderrank/battle/manager/TriggerRegistry.java
++++ b/core-plugin/src/main/java/com/borderrank/battle/manager/TriggerRegistry.java
+@@ -19,6 +19,7 @@ public class TriggerRegistry {
+ 
+     private final Map<String, TriggerData> triggers = new HashMap<>();
+     private final JavaPlugin plugin;
++    private File resolvedTriggersFile;
+ 
+     /**
+      * Category section names in triggers.yml mapped to TriggerCategory enum.
+@@ -65,6 +66,7 @@ public class TriggerRegistry {
+         }
+ 
+         if (triggersFile.exists()) {
++            this.resolvedTriggersFile = triggersFile;
+             FileConfiguration triggersConfig = YamlConfiguration.loadConfiguration(triggersFile);
+             load(triggersConfig);
+             plugin.getLogger().info("Loaded " + triggers.size() + " triggers from triggers.yml");
+@@ -222,4 +224,12 @@ public class TriggerRegistry {
+     public int getTriggerCount() {
+         return triggers.size();
+     }
++
++    /**
++     * Returns the resolved triggers.yml File that was successfully loaded.
++     * Used by MapManager to load maps from the same file.
++     */
++    public File getResolvedTriggersFile() {
++        return resolvedTriggersFile;
++    }
+ }
+diff --git a/core-plugin/src/main/resources/triggers.yml b/core-plugin/src/main/resources/triggers.yml
+index 8987c63..e6b9f86 100644
+--- a/core-plugin/src/main/resources/triggers.yml
++++ b/core-plugin/src/main/resources/triggers.yml
+@@ -320,3 +320,36 @@ match:
+     trion_leak_enabled: true
+     friendly_fire: false
+     describe_mode_enabled: true
++
++# ============================================
++# MAP DEFINITIONS
++# ============================================
++# Each map defines spawn points and optional boundaries.
++# Spawn points format: "x,y,z"
++# At least 2 spawn points required (for solo), 4 recommended (for team).
++# Coordinates should be set after building the arenas in-game.
++# Use /bradmin map list to check map status.
++maps:
++  arena_factory:
++    display_name: "工場地帯"
++    world: "world"
++    spawn_points:
++      - "100,65,100"
++      - "150,65,150"
++      - "100,65,150"
++      - "150,65,100"
++    boundaries:
++      corner1: "80,0,80"
++      corner2: "170,128,170"
++
++  arena_residential:
++    display_name: "住宅街"
++    world: "world"
++    spawn_points:
++      - "300,65,100"
++      - "350,65,150"
++      - "300,65,150"
++      - "350,65,100"
++    boundaries:
++      corner1: "280,0,80"
++      corner2: "370,128,170"

@@ -361,6 +361,13 @@ public class RankCommand implements CommandExecutor, TabCompleter {
             try {
                 List<MatchDAO.MatchRecord> records = matchDAO.getPlayerHistory(target.getUniqueId(), 10);
 
+                // Fetch participants for each match
+                List<Integer> matchIds = new ArrayList<>();
+                for (MatchDAO.MatchRecord rec : records) {
+                    matchIds.add(rec.getMatchId());
+                }
+                java.util.Map<Integer, List<MatchDAO.MatchParticipant>> participantsMap = matchDAO.getMatchParticipants(matchIds);
+
                 // Switch back to main thread for chat messages
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     MessageUtil.sendInfoMessage(viewer, "\u00a78\u00a7m----------\u00a7r \u00a7b" + target.getName() + " \u00a7fのマッチ履歴 \u00a78\u00a7m----------");
@@ -377,12 +384,28 @@ public class RankCommand implements CommandExecutor, TabCompleter {
                             int secs = rec.getDurationSec() % 60;
                             String timeAgo = getTimeAgo(rec.getStartedAt());
 
+                            // Build opponent names
+                            String opponentInfo = "";
+                            List<MatchDAO.MatchParticipant> participants = participantsMap.get(rec.getMatchId());
+                            if (participants != null) {
+                                StringBuilder opponents = new StringBuilder();
+                                for (MatchDAO.MatchParticipant p : participants) {
+                                    if (!p.getUuid().equals(target.getUniqueId().toString())) {
+                                        if (opponents.length() > 0) opponents.append("\u00a77, ");
+                                        opponents.append("\u00a7f").append(p.getPlayerName());
+                                    }
+                                }
+                                if (opponents.length() > 0) {
+                                    opponentInfo = " \u00a77vs " + opponents;
+                                }
+                            }
+
                             MessageUtil.sendInfoMessage(viewer,
                                 resultIcon + " " + typeTag + " \u00a7f#" + rec.getPlacement()
+                                + opponentInfo
                                 + " \u00a77| " + weaponName
                                 + " \u00a77| \u00a7f" + rec.getKills() + "K/" + rec.getDeaths() + "D"
                                 + " \u00a77| " + rpColor + rec.getRpChange() + " RP"
-                                + " \u00a78(" + mins + ":" + String.format("%02d", secs) + ")"
                                 + " \u00a78[" + rec.getMapName() + " " + timeAgo + "]");
                         }
                     }

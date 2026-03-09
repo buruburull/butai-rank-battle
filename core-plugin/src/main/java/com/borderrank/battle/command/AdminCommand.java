@@ -281,6 +281,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                 try {
                     java.util.List<com.borderrank.battle.database.MatchDAO.RecentMatch> matches = matchDAO.getRecentMatches(10);
+
+                    // Fetch participants for each match
+                    java.util.List<Integer> matchIds = new java.util.ArrayList<>();
+                    for (com.borderrank.battle.database.MatchDAO.RecentMatch m : matches) {
+                        matchIds.add(m.getMatchId());
+                    }
+                    java.util.Map<Integer, java.util.List<com.borderrank.battle.database.MatchDAO.MatchParticipant>> participantsMap = matchDAO.getMatchParticipants(matchIds);
+
                     Bukkit.getScheduler().runTask(plugin, () -> {
                         MessageUtil.sendInfoMessage(sender, "§8§m----------§r §e§l最近のマッチ §8§m----------");
                         if (matches.isEmpty()) {
@@ -298,12 +306,30 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                                     else if (diffMin < 1440) timeAgo = (diffMin / 60) + "時間前";
                                     else timeAgo = (diffMin / 1440) + "日前";
                                 }
+
+                                // Build participant names
+                                String playerNames = "";
+                                java.util.List<com.borderrank.battle.database.MatchDAO.MatchParticipant> participants = participantsMap.get(m.getMatchId());
+                                if (participants != null && !participants.isEmpty()) {
+                                    StringBuilder sb = new StringBuilder();
+                                    for (int i = 0; i < participants.size(); i++) {
+                                        com.borderrank.battle.database.MatchDAO.MatchParticipant p = participants.get(i);
+                                        if (i > 0) sb.append(" §7vs ");
+                                        String pColor = p.getPlacement() == 1 ? "§6" : "§f";
+                                        sb.append(pColor).append(p.getPlayerName());
+                                    }
+                                    playerNames = sb.toString();
+                                }
+
                                 MessageUtil.sendInfoMessage(sender,
                                     "§f#" + m.getMatchId() + " " + typeTag
                                     + " §7| §f" + m.getMapName()
-                                    + " §7| §f" + m.getPlayerCount() + "人"
                                     + " §7| §f" + mins + ":" + String.format("%02d", secs)
                                     + " §8(" + timeAgo + ")");
+                                if (!playerNames.isEmpty()) {
+                                    MessageUtil.sendInfoMessage(sender,
+                                        "  §7→ " + playerNames);
+                                }
                             }
                         }
                         MessageUtil.sendInfoMessage(sender, "§8§m--------------------------------------");
