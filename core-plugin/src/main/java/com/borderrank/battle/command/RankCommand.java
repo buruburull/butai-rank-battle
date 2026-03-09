@@ -16,6 +16,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -374,13 +375,15 @@ public class RankCommand implements CommandExecutor, TabCompleter {
                             String typeTag = rec.getMatchType().equals("team") ? "\u00a7d[T]" : "\u00a7e[S]";
                             int mins = rec.getDurationSec() / 60;
                             int secs = rec.getDurationSec() % 60;
+                            String timeAgo = getTimeAgo(rec.getStartedAt());
 
                             MessageUtil.sendInfoMessage(viewer,
                                 resultIcon + " " + typeTag + " \u00a7f#" + rec.getPlacement()
                                 + " \u00a77| " + weaponName
                                 + " \u00a77| \u00a7f" + rec.getKills() + "K/" + rec.getDeaths() + "D"
                                 + " \u00a77| " + rpColor + rec.getRpChange() + " RP"
-                                + " \u00a78(" + mins + ":" + String.format("%02d", secs) + ")");
+                                + " \u00a78(" + mins + ":" + String.format("%02d", secs) + ")"
+                                + " \u00a78[" + rec.getMapName() + " " + timeAgo + "]");
                         }
                     }
 
@@ -405,6 +408,21 @@ public class RankCommand implements CommandExecutor, TabCompleter {
             case "SNIPER" -> "\u00a7bSNP";
             default -> "\u00a77???";
         };
+    }
+
+    /**
+     * Returns a human-readable "time ago" string from a Timestamp.
+     */
+    private String getTimeAgo(Timestamp ts) {
+        if (ts == null) return "";
+        long diffMs = System.currentTimeMillis() - ts.getTime();
+        long diffMin = diffMs / (1000 * 60);
+        if (diffMin < 1) return "たった今";
+        if (diffMin < 60) return diffMin + "分前";
+        long diffHour = diffMin / 60;
+        if (diffHour < 24) return diffHour + "時間前";
+        long diffDay = diffHour / 24;
+        return diffDay + "日前";
     }
 
     @Override

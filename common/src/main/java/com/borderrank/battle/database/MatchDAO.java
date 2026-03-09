@@ -135,6 +135,118 @@ public class MatchDAO {
     }
 
     /**
+     * Gets recent matches globally (for admin view).
+     *
+     * @param limit max number of matches
+     * @return list of RecentMatch objects, most recent first
+     */
+    public List<RecentMatch> getRecentMatches(int limit) throws SQLException {
+        String sql = "SELECT mh.match_id, mh.match_type, mh.map_name, mh.started_at, mh.duration_sec, "
+                   + "COUNT(mr.uuid) as player_count "
+                   + "FROM match_history mh "
+                   + "LEFT JOIN match_results mr ON mh.match_id = mr.match_id "
+                   + "WHERE mh.ended_at IS NOT NULL "
+                   + "GROUP BY mh.match_id, mh.match_type, mh.map_name, mh.started_at, mh.duration_sec "
+                   + "ORDER BY mh.started_at DESC "
+                   + "LIMIT ?";
+
+        List<RecentMatch> matches = new ArrayList<>();
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, limit);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    matches.add(new RecentMatch(
+                        rs.getInt("match_id"),
+                        rs.getString("match_type"),
+                        rs.getString("map_name"),
+                        rs.getTimestamp("started_at"),
+                        rs.getInt("duration_sec"),
+                        rs.getInt("player_count")
+                    ));
+                }
+            }
+        }
+        return matches;
+    }
+
+    /**
+     * Gets total match count and stats.
+     */
+    public MatchStats getMatchStats() throws SQLException {
+        String sql = "SELECT COUNT(*) as total, "
+                   + "SUM(CASE WHEN match_type = 'solo' THEN 1 ELSE 0 END) as solo_count, "
+                   + "SUM(CASE WHEN match_type = 'team' THEN 1 ELSE 0 END) as team_count, "
+                   + "AVG(duration_sec) as avg_duration "
+                   + "FROM match_history WHERE ended_at IS NOT NULL";
+
+        try (Connection conn = databaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return new MatchStats(
+                    rs.getInt("total"),
+                    rs.getInt("solo_count"),
+                    rs.getInt("team_count"),
+                    rs.getInt("avg_duration")
+                );
+            }
+        }
+        return new MatchStats(0, 0, 0, 0);
+    }
+
+    /**
+     * Summary of a recent match (no per-player details).
+     */
+    public static class RecentMatch {
+        private final int matchId;
+        private final String matchType;
+        private final String mapName;
+        private final Timestamp startedAt;
+        private final int durationSec;
+        private final int playerCount;
+
+        public RecentMatch(int matchId, String matchType, String mapName,
+                           Timestamp startedAt, int durationSec, int playerCount) {
+            this.matchId = matchId;
+            this.matchType = matchType;
+            this.mapName = mapName;
+            this.startedAt = startedAt;
+            this.durationSec = durationSec;
+            this.playerCount = playerCount;
+        }
+
+        public int getMatchId() { return matchId; }
+        public String getMatchType() { return matchType; }
+        public String getMapName() { return mapName; }
+        public Timestamp getStartedAt() { return startedAt; }
+        public int getDurationSec() { return durationSec; }
+        public int getPlayerCount() { return playerCount; }
+    }
+
+    /**
+     * Aggregate match statistics.
+     */
+    public static class MatchStats {
+        private final int totalMatches;
+        private final int soloMatches;
+        private final int teamMatches;
+        private final int avgDurationSec;
+
+        public MatchStats(int totalMatches, int soloMatches, int teamMatches, int avgDurationSec) {
+            this.totalMatches = totalMatches;
+            this.soloMatches = soloMatches;
+            this.teamMatches = teamMatches;
+            this.avgDurationSec = avgDurationSec;
+        }
+
+        public int getTotalMatches() { return totalMatches; }
+        public int getSoloMatches() { return soloMatches; }
+        public int getTeamMatches() { return teamMatches; }
+        public int getAvgDurationSec() { return avgDurationSec; }
+    }
+
+    /**
      * Simple record class holding a single player's match result joined with match info.
      */
     public static class MatchRecord {

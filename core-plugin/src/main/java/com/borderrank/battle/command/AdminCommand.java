@@ -45,6 +45,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             case "rp" -> handleRP(sender, args);
             case "season" -> handleSeason(sender, args);
             case "map" -> handleMap(sender, args);
+            case "match" -> handleMatch(sender, args);
             default -> MessageUtil.sendErrorMessage(sender, "Unknown subcommand: " + subcommand);
         }
 
@@ -257,6 +258,86 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    /**
+     * Handle /bradmin match command - view match history and stats.
+     */
+    private void handleMatch(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            MessageUtil.sendErrorMessage(sender, "Usage: /bradmin match <recent|stats>");
+            return;
+        }
+
+        BRBPlugin plugin = BRBPlugin.getInstance();
+        com.borderrank.battle.database.MatchDAO matchDAO = plugin.getMatchDAO();
+        if (matchDAO == null) {
+            MessageUtil.sendErrorMessage(sender, "マッチ履歴システムが利用できません。");
+            return;
+        }
+
+        String action = args[1].toLowerCase();
+
+        if ("recent".equals(action)) {
+            // Async DB query
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                try {
+                    java.util.List<com.borderrank.battle.database.MatchDAO.RecentMatch> matches = matchDAO.getRecentMatches(10);
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        MessageUtil.sendInfoMessage(sender, "§8§m----------§r §e§l最近のマッチ §8§m----------");
+                        if (matches.isEmpty()) {
+                            MessageUtil.sendInfoMessage(sender, "§7マッチ履歴がありません。");
+                        } else {
+                            for (com.borderrank.battle.database.MatchDAO.RecentMatch m : matches) {
+                                String typeTag = "team".equals(m.getMatchType()) ? "§d[T]" : "§e[S]";
+                                int mins = m.getDurationSec() / 60;
+                                int secs = m.getDurationSec() % 60;
+                                // Time ago
+                                String timeAgo = "";
+                                if (m.getStartedAt() != null) {
+                                    long diffMin = (System.currentTimeMillis() - m.getStartedAt().getTime()) / (1000 * 60);
+                                    if (diffMin < 60) timeAgo = diffMin + "分前";
+                                    else if (diffMin < 1440) timeAgo = (diffMin / 60) + "時間前";
+                                    else timeAgo = (diffMin / 1440) + "日前";
+                                }
+                                MessageUtil.sendInfoMessage(sender,
+                                    "§f#" + m.getMatchId() + " " + typeTag
+                                    + " §7| §f" + m.getMapName()
+                                    + " §7| §f" + m.getPlayerCount() + "人"
+                                    + " §7| §f" + mins + ":" + String.format("%02d", secs)
+                                    + " §8(" + timeAgo + ")");
+                            }
+                        }
+                        MessageUtil.sendInfoMessage(sender, "§8§m--------------------------------------");
+                    });
+                } catch (Exception e) {
+                    Bukkit.getScheduler().runTask(plugin, () ->
+                        MessageUtil.sendErrorMessage(sender, "マッチ履歴の取得に失敗しました。"));
+                    e.printStackTrace();
+                }
+            });
+        } else if ("stats".equals(action)) {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                try {
+                    com.borderrank.battle.database.MatchDAO.MatchStats stats = matchDAO.getMatchStats();
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        MessageUtil.sendInfoMessage(sender, "§8§m----------§r §e§lマッチ統計 §8§m----------");
+                        MessageUtil.sendInfoMessage(sender, "§e◆ 総マッチ数: §f" + stats.getTotalMatches());
+                        MessageUtil.sendInfoMessage(sender, "§e◆ ソロ: §f" + stats.getSoloMatches() + " §7| §eチーム: §f" + stats.getTeamMatches());
+                        int avgMin = stats.getAvgDurationSec() / 60;
+                        int avgSec = stats.getAvgDurationSec() % 60;
+                        MessageUtil.sendInfoMessage(sender, "§e◆ 平均試合時間: §f" + avgMin + ":" + String.format("%02d", avgSec));
+                        MessageUtil.sendInfoMessage(sender, "§8§m--------------------------------------");
+                    });
+                } catch (Exception e) {
+                    Bukkit.getScheduler().runTask(plugin, () ->
+                        MessageUtil.sendErrorMessage(sender, "統計の取得に失敗しました。"));
+                    e.printStackTrace();
+                }
+            });
+        } else {
+            MessageUtil.sendErrorMessage(sender, "Unknown match action: " + action);
+        }
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("brb.admin")) {
@@ -271,6 +352,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             completions.add("rp");
             completions.add("season");
             completions.add("map");
+            completions.add("match");
         } else if (args.length == 2) {
             if ("trigger".equalsIgnoreCase(args[0])) {
                 completions.add("reload");
@@ -284,6 +366,9 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 completions.add("list");
                 completions.add("reset");
                 completions.add("reload");
+            } else if ("match".equalsIgnoreCase(args[0])) {
+                completions.add("recent");
+                completions.add("stats");
             }
         } else if (args.length == 3) {
             if ("rp".equalsIgnoreCase(args[0]) && "set".equalsIgnoreCase(args[1])) {
