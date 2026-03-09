@@ -161,7 +161,10 @@ public class RankCommand implements CommandExecutor, TabCompleter {
 
         Season activeSeason = rankManager.getActiveSeason();
         if (activeSeason != null) {
-            MessageUtil.sendInfoMessage(player, "\u00a7e\u25c6 シーズン: \u00a7b" + activeSeason.getName());
+            java.time.LocalDateTime startDate = activeSeason.getStartDate();
+            long daysSinceStart = java.time.temporal.ChronoUnit.DAYS.between(startDate.toLocalDate(), java.time.LocalDate.now());
+            MessageUtil.sendInfoMessage(player, "\u00a7e\u25c6 シーズン: \u00a7b" + activeSeason.getName()
+                + " \u00a77(" + startDate.toLocalDate() + "～ / " + daysSinceStart + "日目)");
         } else {
             MessageUtil.sendInfoMessage(player, "\u00a7e\u25c6 シーズン: \u00a77シーズンなし");
         }

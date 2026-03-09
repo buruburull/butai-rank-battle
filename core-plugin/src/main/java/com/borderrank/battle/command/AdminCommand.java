@@ -159,15 +159,48 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             }
             if (rankManager.startSeason(seasonName)) {
                 MessageUtil.sendSuccessMessage(sender, "シーズン '" + seasonName + "' を開始しました！");
+                // Broadcast to all online players
+                Bukkit.broadcast(net.kyori.adventure.text.Component.text("")
+                    .append(net.kyori.adventure.text.Component.text("★ ", net.kyori.adventure.text.format.NamedTextColor.GOLD, net.kyori.adventure.text.format.TextDecoration.BOLD))
+                    .append(net.kyori.adventure.text.Component.text("新シーズン「" + seasonName + "」が開始されました！", net.kyori.adventure.text.format.NamedTextColor.YELLOW))
+                );
+                Bukkit.broadcast(net.kyori.adventure.text.Component.text("  全プレイヤーのRPがリセットされ、新たなランキング戦が始まります！", net.kyori.adventure.text.format.NamedTextColor.GREEN));
             } else {
                 MessageUtil.sendErrorMessage(sender, "シーズンの開始に失敗しました。");
             }
         } else if ("end".equalsIgnoreCase(action)) {
-            if (rankManager.endSeason()) {
-                MessageUtil.sendSuccessMessage(sender, "現在のシーズンを終了しました。全プレイヤーのRPをリセットしました。");
-            } else {
+            com.borderrank.battle.model.Season currentSeason = rankManager.getActiveSeason();
+            if (currentSeason == null) {
                 MessageUtil.sendErrorMessage(sender, "進行中のシーズンがありません。");
+                return;
             }
+            String endedSeasonName = currentSeason.getName();
+            if (rankManager.endSeason()) {
+                MessageUtil.sendSuccessMessage(sender, "シーズン '" + endedSeasonName + "' を終了しました。全プレイヤーのRPをリセットしました。");
+                // Broadcast to all online players
+                Bukkit.broadcast(net.kyori.adventure.text.Component.text("")
+                    .append(net.kyori.adventure.text.Component.text("★ ", net.kyori.adventure.text.format.NamedTextColor.RED, net.kyori.adventure.text.format.TextDecoration.BOLD))
+                    .append(net.kyori.adventure.text.Component.text("シーズン「" + endedSeasonName + "」が終了しました！", net.kyori.adventure.text.format.NamedTextColor.YELLOW))
+                );
+                Bukkit.broadcast(net.kyori.adventure.text.Component.text("  全プレイヤーのRPが1000にリセットされました。お疲れ様でした！", net.kyori.adventure.text.format.NamedTextColor.AQUA));
+            } else {
+                MessageUtil.sendErrorMessage(sender, "シーズンの終了に失敗しました。");
+            }
+        } else if ("info".equalsIgnoreCase(action)) {
+            com.borderrank.battle.model.Season activeSeason = rankManager.getActiveSeason();
+            if (activeSeason == null) {
+                MessageUtil.sendInfoMessage(sender, "現在進行中のシーズンはありません。");
+                MessageUtil.sendInfoMessage(sender, "§7/bradmin season start <name> で新シーズンを開始できます。");
+                return;
+            }
+            java.time.LocalDateTime startDate = activeSeason.getStartDate();
+            long daysSinceStart = java.time.temporal.ChronoUnit.DAYS.between(startDate.toLocalDate(), java.time.LocalDate.now());
+            MessageUtil.sendInfoMessage(sender, "§8§m----------§r §e§lシーズン情報 §8§m----------");
+            MessageUtil.sendInfoMessage(sender, "§e◆ シーズン名: §b" + activeSeason.getName());
+            MessageUtil.sendInfoMessage(sender, "§e◆ 開始日: §f" + startDate.toLocalDate().toString());
+            MessageUtil.sendInfoMessage(sender, "§e◆ 経過日数: §f" + daysSinceStart + "日");
+            MessageUtil.sendInfoMessage(sender, "§e◆ ステータス: §a進行中");
+            MessageUtil.sendInfoMessage(sender, "§8§m--------------------------------------");
         } else {
             MessageUtil.sendErrorMessage(sender, "Unknown season action: " + action);
         }
@@ -238,6 +271,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             } else if ("season".equalsIgnoreCase(args[0])) {
                 completions.add("start");
                 completions.add("end");
+                completions.add("info");
             } else if ("map".equalsIgnoreCase(args[0])) {
                 completions.add("list");
                 completions.add("reset");
