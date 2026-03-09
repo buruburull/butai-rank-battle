@@ -69,6 +69,7 @@ public class MatchManager {
     }
 
     public ArenaInstance getMatch(int matchId) { return activeMatches.get(matchId); }
+    public java.util.Collection<ArenaInstance> getAllActiveMatches() { return activeMatches.values(); }
     public int getActiveMatchCount() { return activeMatches.size(); }
     public int getTotalPlayersInMatches() {
         int total = 0;

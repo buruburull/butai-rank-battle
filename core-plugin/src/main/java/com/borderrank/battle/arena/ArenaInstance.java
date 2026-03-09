@@ -19,12 +19,14 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.GameMode;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -120,12 +122,20 @@ public class ArenaInstance {
             plugin.getLogger().warning("World '" + mapData.getWorldName() + "' not found, using default world.");
         }
 
-        int spawnIndex = 0;
+        // Shuffle spawn indices for random spawn assignment
+        List<Integer> spawnIndices = new ArrayList<>();
+        for (int i = 0; i < mapData.getSpawnPointCount(); i++) {
+            spawnIndices.add(i);
+        }
+        Collections.shuffle(spawnIndices);
+
+        int playerIdx = 0;
         for (UUID uuid : players) {
             Player player = Bukkit.getPlayer(uuid);
             if (player == null) continue;
 
-            // Teleport to map spawn point
+            // Teleport to random map spawn point
+            int spawnIndex = playerIdx < spawnIndices.size() ? spawnIndices.get(playerIdx) : playerIdx;
             Location spawnLoc = mapData.getSpawnPoint(spawnIndex, mapWorld);
             if (spawnLoc == null) {
                 // Fallback: use safe spawn with offset
@@ -133,6 +143,9 @@ public class ArenaInstance {
                 plugin.getLogger().warning("No spawn point #" + spawnIndex + " for map " + mapData.getMapId() + ", using fallback.");
             }
             player.teleport(spawnLoc);
+
+            // Set game mode to SURVIVAL for combat (allows block break/place)
+            player.setGameMode(GameMode.SURVIVAL);
 
             // Clear inventory
             player.getInventory().clear();
@@ -208,7 +221,7 @@ public class ArenaInstance {
             sbManager.createMatchScoreboard(player, mapData.getDisplayName(), timeLimitSec);
 
             MessageUtil.sendMessage(player, ChatColor.YELLOW + "マッチ開始！マップ: " + ChatColor.WHITE + mapData.getDisplayName() + ChatColor.YELLOW + " カウントダウン: " + countdownRemaining);
-            spawnIndex++;
+            playerIdx++;
         }
 
         // Start trion tick loop (HP leak, sustain cost, XP bar update, bailout check)
@@ -483,6 +496,7 @@ public class ArenaInstance {
 
                 // Restore player state
                 player.getInventory().clear();
+                player.setGameMode(GameMode.ADVENTURE);
                 if (!player.isDead()) {
                     player.setHealth(player.getMaxHealth());
                     player.setFoodLevel(20);

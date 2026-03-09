@@ -13,7 +13,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 
-import java.util.UUID;
 
 /**
  * Listens for block changes during matches and records them in BlockTracker
@@ -29,6 +28,7 @@ public class BlockChangeListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityExplode(EntityExplodeEvent event) {
         Entity entity = event.getEntity();
+        BRBPlugin plugin = BRBPlugin.getInstance();
 
         // Try to find the player who caused this explosion
         Player shooter = null;
@@ -38,18 +38,17 @@ public class BlockChangeListener implements Listener {
             }
         }
 
-        // If no direct shooter, check if explosion is within any active match map
         ArenaInstance match = null;
-        BRBPlugin plugin = BRBPlugin.getInstance();
 
         if (shooter != null) {
             match = plugin.getMatchManager().getPlayerMatch(shooter.getUniqueId());
-        } else {
-            // For non-player explosions within match boundaries,
-            // try to find match by checking if any match player is nearby
-            for (UUID uuid : getAllMatchPlayers(plugin)) {
-                ArenaInstance m = plugin.getMatchManager().getPlayerMatch(uuid);
-                if (m != null) {
+        }
+
+        // If no direct shooter (TNT, etc), find match by explosion location
+        if (match == null) {
+            org.bukkit.Location explosionLoc = event.getLocation();
+            for (ArenaInstance m : plugin.getMatchManager().getAllActiveMatches()) {
+                if (m.getMapData().isWithinBoundaries(explosionLoc)) {
                     match = m;
                     break;
                 }
@@ -92,13 +91,4 @@ public class BlockChangeListener implements Listener {
         match.getBlockTracker().recordBlockChange(event.getBlockReplacedState().getBlock());
     }
 
-    /**
-     * Collect all UUIDs of players currently in matches.
-     */
-    private java.util.Set<UUID> getAllMatchPlayers(BRBPlugin plugin) {
-        java.util.Set<UUID> allPlayers = new java.util.HashSet<>();
-        // We don't have direct access to all matches, so this is a fallback
-        // The primary path (shooter != null) handles most cases
-        return allPlayers;
-    }
 }
