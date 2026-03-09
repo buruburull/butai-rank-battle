@@ -193,6 +193,11 @@ public class TriggerUseListener implements Listener {
             Vector dir = player.getLocation().getDirection();
             boolean placeX = Math.abs(dir.getX()) < Math.abs(dir.getZ());
 
+            BRBPlugin plugin = BRBPlugin.getInstance();
+            // Get BlockTracker to record changes for match-end restoration
+            com.borderrank.battle.arena.ArenaInstance match =
+                    plugin.getMatchManager().getPlayerMatch(player.getUniqueId());
+
             for (int i = -1; i <= 1; i++) {
                 for (int y = 0; y <= 2; y++) {
                     Location blockLoc;
@@ -203,13 +208,16 @@ public class TriggerUseListener implements Listener {
                     }
                     Block block = blockLoc.getBlock();
                     if (block.getType() == Material.AIR) {
+                        // Record original state (AIR) before placing glass
+                        if (match != null) {
+                            match.getBlockTracker().recordBlockChange(block);
+                        }
                         block.setType(Material.GLASS);
                     }
                 }
             }
             player.sendActionBar(ChatColor.YELLOW + "エスクード！ -" + (int) cost + " Trion");
 
-            BRBPlugin plugin = BRBPlugin.getInstance();
             Location saved = centerLoc.clone();
             boolean savedPlaceX = placeX;
             plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, () -> {

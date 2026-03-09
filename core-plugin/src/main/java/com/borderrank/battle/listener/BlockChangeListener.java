@@ -13,7 +13,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 
-
 /**
  * Listens for block changes during matches and records them in BlockTracker
  * so they can be restored when the match ends.
@@ -30,21 +29,21 @@ public class BlockChangeListener implements Listener {
         Entity entity = event.getEntity();
         BRBPlugin plugin = BRBPlugin.getInstance();
 
-        // Try to find the player who caused this explosion
-        Player shooter = null;
-        if (entity instanceof Projectile projectile) {
-            if (projectile.getShooter() instanceof Player p) {
-                shooter = p;
+        ArenaInstance match = null;
+
+        // Case 1: Entity is a Player (Meteora Sub uses createExplosion with shooter as source)
+        if (entity instanceof Player player) {
+            match = plugin.getMatchManager().getPlayerMatch(player.getUniqueId());
+        }
+
+        // Case 2: Entity is a Projectile (crossbow bolt, etc)
+        if (match == null && entity instanceof Projectile projectile) {
+            if (projectile.getShooter() instanceof Player shooter) {
+                match = plugin.getMatchManager().getPlayerMatch(shooter.getUniqueId());
             }
         }
 
-        ArenaInstance match = null;
-
-        if (shooter != null) {
-            match = plugin.getMatchManager().getPlayerMatch(shooter.getUniqueId());
-        }
-
-        // If no direct shooter (TNT, etc), find match by explosion location
+        // Case 3: Fallback - find match by explosion location within map boundaries
         if (match == null) {
             org.bukkit.Location explosionLoc = event.getLocation();
             for (ArenaInstance m : plugin.getMatchManager().getAllActiveMatches()) {
@@ -90,5 +89,4 @@ public class BlockChangeListener implements Listener {
         // Record the block that was replaced (original state before placement)
         match.getBlockTracker().recordBlockChange(event.getBlockReplacedState().getBlock());
     }
-
 }
