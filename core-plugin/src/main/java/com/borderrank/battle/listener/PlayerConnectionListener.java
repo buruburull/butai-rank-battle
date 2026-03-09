@@ -50,6 +50,13 @@ public class PlayerConnectionListener implements Listener {
             // Recalculate rank from current RP
             rankManager.recalculateRank(brPlayer);
 
+            // Load loadouts from DB (presets + default)
+            try {
+                plugin.getLoadoutManager().loadPlayerLoadouts(uuid);
+            } catch (Exception e) {
+                plugin.getLogger().warning("Failed to load loadouts for " + player.getName() + ": " + e.getMessage());
+            }
+
             // Load trion data
             TrionManager trionManager = plugin.getTrionManager();
             trionManager.initPlayer(uuid, 1000); // Default trion value

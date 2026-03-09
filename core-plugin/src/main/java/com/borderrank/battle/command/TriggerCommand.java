@@ -235,19 +235,164 @@ public class TriggerCommand implements CommandExecutor, TabCompleter {
      */
     private void handlePreset(Player player, String[] args) {
         if (args.length < 2) {
-            MessageUtil.sendErrorMessage(player, "Usage: /trigger preset <save|load> <name>");
+            MessageUtil.sendErrorMessage(player, "Usage: /trigger preset <save|load|list|delete> <name>");
             return;
         }
 
+        BRBPlugin plugin = BRBPlugin.getInstance();
+        LoadoutManager loadoutManager = plugin.getLoadoutManager();
+        TriggerRegistry registry = plugin.getTriggerRegistry();
+        UUID uuid = player.getUniqueId();
         String action = args[1].toLowerCase();
-        String presetName = args.length > 2 ? args[2] : "";
 
-        if ("save".equalsIgnoreCase(action)) {
-            MessageUtil.sendSuccessMessage(player, "Preset '" + presetName + "' saved!");
-        } else if ("load".equalsIgnoreCase(action)) {
-            MessageUtil.sendSuccessMessage(player, "Preset '" + presetName + "' loaded!");
-        } else {
-            MessageUtil.sendErrorMessage(player, "Unknown preset action: " + action);
+        switch (action) {
+            case "save" -> {
+                if (args.length < 3) {
+                    MessageUtil.sendErrorMessage(player, "Usage: /trigger preset save <name>");
+                    return;
+                }
+                String presetName = args[2].toLowerCase();
+                if ("default".equals(presetName)) {
+                    MessageUtil.sendErrorMessage(player, "'default' はプリセット名として使用できません。");
+                    return;
+                }
+                // Max 5 presets per player
+                Map<String, Loadout> allLoadouts = loadoutManager.getPlayerLoadouts(uuid);
+                long presetCount = allLoadouts.keySet().stream().filter(n -> !"default".equals(n)).count();
+                if (presetCount >= 5 && !allLoadouts.containsKey(presetName)) {
+                    MessageUtil.sendErrorMessage(player, "プリセットは最大5つまでです。不要なプリセットを /trigger preset delete <name> で削除してください。");
+                    return;
+                }
+                // Copy current default loadout to the preset name
+                Loadout currentLoadout = loadoutManager.getLoadout(uuid, "default");
+                if (currentLoadout == null || !currentLoadout.isActive()) {
+                    MessageUtil.sendErrorMessage(player, "現在のロードアウトが空です。先にトリガーをセットしてください。");
+                    return;
+                }
+                // Create a new loadout with the preset name, copying slots from default
+                String[] slotsCopy = new String[8];
+                for (int i = 0; i < 8; i++) {
+                    String s = currentLoadout.getSlot(i);
+                    slotsCopy[i] = (s != null) ? s : "";
+                }
+                Loadout preset = new Loadout(uuid, presetName, slotsCopy);
+                preset.calculateTotalCost(registry.getAll());
+                try {
+                    loadoutManager.saveLoadout(preset);
+                    MessageUtil.sendSuccessMessage(player, "プリセット '" + presetName + "' を保存しました！ (" + preset.getTotalCost() + " TP)");
+                } catch (Exception e) {
+                    MessageUtil.sendErrorMessage(player, "プリセットの保存に失敗しました。");
+                    plugin.getLogger().warning("Failed to save preset: " + e.getMessage());
+                }
+            }
+            case "load" -> {
+                if (args.length < 3) {
+                    MessageUtil.sendErrorMessage(player, "Usage: /trigger preset load <name>");
+                    return;
+                }
+                String presetName = args[2].toLowerCase();
+                Loadout preset = loadoutManager.getLoadout(uuid, presetName);
+                if (preset == null) {
+                    MessageUtil.sendErrorMessage(player, "プリセット '" + presetName + "' が見つかりません。");
+                    return;
+                }
+                // Copy preset slots into default loadout
+                Loadout defaultLoadout = loadoutManager.getLoadout(uuid, "default");
+                if (defaultLoadout == null) {
+                    defaultLoadout = new Loadout(uuid, "default");
+                }
+                for (int i = 0; i < 8; i++) {
+                    String s = preset.getSlot(i);
+                    defaultLoadout.setSlot(i, (s != null) ? s : "");
+                }
+                defaultLoadout.calculateTotalCost(registry.getAll());
+                try {
+                    loadoutManager.saveLoadout(defaultLoadout);
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to save default loadout: " + e.getMessage());
+                }
+                // Update player inventory with loaded triggers
+                player.getInventory().clear();
+                for (int i = 0; i < 8; i++) {
+                    String triggerId = defaultLoadout.getSlot(i);
+                    if (triggerId != null && !triggerId.isEmpty()) {
+                        TriggerData td = registry.get(triggerId);
+                        if (td != null) {
+                            org.bukkit.inventory.ItemStack item = new org.bukkit.inventory.ItemStack(td.getMcItem());
+                            org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+                            if (meta != null) {
+                                meta.setDisplayName(org.bukkit.ChatColor.GREEN + td.getName());
+                                List<String> lore = new ArrayList<>();
+                                lore.add(org.bukkit.ChatColor.GRAY + td.getDescription());
+                                lore.add(org.bukkit.ChatColor.YELLOW + "Cost: " + td.getCost() + " TP");
+                                meta.setLore(lore);
+                                item.setItemMeta(meta);
+                            }
+                            player.getInventory().setItem(i, item);
+                        }
+                    }
+                }
+                MessageUtil.sendSuccessMessage(player, "プリセット '" + presetName + "' を読み込みました！ (" + defaultLoadout.getTotalCost() + "/15 TP)");
+            }
+            case "list" -> {
+                Map<String, Loadout> allLoadouts = loadoutManager.getPlayerLoadouts(uuid);
+                MessageUtil.sendInfoMessage(player, "\u00a78\u00a7m----------\u00a7r \u00a7e\u00a7lプリセット一覧 \u00a78\u00a7m----------");
+                boolean hasPresets = false;
+                for (Map.Entry<String, Loadout> entry : allLoadouts.entrySet()) {
+                    if ("default".equals(entry.getKey())) continue;
+                    hasPresets = true;
+                    Loadout lo = entry.getValue();
+                    lo.calculateTotalCost(registry.getAll());
+                    // Build trigger summary
+                    StringBuilder triggerNames = new StringBuilder();
+                    for (int i = 0; i < 8; i++) {
+                        String tid = lo.getSlot(i);
+                        if (tid != null && !tid.isEmpty()) {
+                            TriggerData td = registry.get(tid);
+                            if (triggerNames.length() > 0) triggerNames.append(", ");
+                            triggerNames.append(td != null ? td.getName() : tid);
+                        }
+                    }
+                    MessageUtil.sendInfoMessage(player, "\u00a7e" + entry.getKey() + " \u00a77(" + lo.getTotalCost() + " TP) \u00a78- " + triggerNames);
+                }
+                if (!hasPresets) {
+                    MessageUtil.sendInfoMessage(player, "\u00a77保存されたプリセットはありません。");
+                    MessageUtil.sendInfoMessage(player, "\u00a77/trigger preset save <name> で現在のロードアウトを保存できます。");
+                }
+                MessageUtil.sendInfoMessage(player, "\u00a78\u00a7m--------------------------------------");
+            }
+            case "delete" -> {
+                if (args.length < 3) {
+                    MessageUtil.sendErrorMessage(player, "Usage: /trigger preset delete <name>");
+                    return;
+                }
+                String presetName = args[2].toLowerCase();
+                if ("default".equals(presetName)) {
+                    MessageUtil.sendErrorMessage(player, "'default' は削除できません。");
+                    return;
+                }
+                Loadout existing = loadoutManager.getLoadout(uuid, presetName);
+                if (existing == null) {
+                    MessageUtil.sendErrorMessage(player, "プリセット '" + presetName + "' が見つかりません。");
+                    return;
+                }
+                // Delete from DB and cache
+                plugin.getLoadoutManager().getPlayerLoadouts(uuid).remove(presetName);
+                // Delete from DB via DAO
+                org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    new com.borderrank.battle.database.LoadoutDAO(plugin.getDatabaseManager()).deleteLoadout(uuid, presetName);
+                });
+                // Remove from in-memory cache
+                Map<String, Loadout> cached = loadoutManager.getPlayerLoadouts(uuid);
+                // Force reload
+                try {
+                    loadoutManager.loadPlayerLoadouts(uuid);
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to reload loadouts: " + e.getMessage());
+                }
+                MessageUtil.sendSuccessMessage(player, "プリセット '" + presetName + "' を削除しました。");
+            }
+            default -> MessageUtil.sendErrorMessage(player, "Unknown preset action: " + action + ". Use: save, load, list, delete");
         }
     }
 
@@ -273,11 +418,27 @@ public class TriggerCommand implements CommandExecutor, TabCompleter {
             } else if ("preset".equalsIgnoreCase(args[0])) {
                 completions.add("save");
                 completions.add("load");
+                completions.add("list");
+                completions.add("delete");
             }
-        } else if (args.length == 3 && "set".equalsIgnoreCase(args[0])) {
-            BRBPlugin plugin = BRBPlugin.getInstance();
-            TriggerRegistry registry = plugin.getTriggerRegistry();
-            completions.addAll(registry.getAll().keySet());
+        } else if (args.length == 3) {
+            if ("set".equalsIgnoreCase(args[0])) {
+                BRBPlugin plugin = BRBPlugin.getInstance();
+                TriggerRegistry registry = plugin.getTriggerRegistry();
+                completions.addAll(registry.getAll().keySet());
+            } else if ("preset".equalsIgnoreCase(args[0])
+                    && ("load".equalsIgnoreCase(args[1]) || "delete".equalsIgnoreCase(args[1]))) {
+                // Show saved preset names for load/delete
+                if (sender instanceof Player p) {
+                    BRBPlugin plugin = BRBPlugin.getInstance();
+                    Map<String, Loadout> loadouts = plugin.getLoadoutManager().getPlayerLoadouts(p.getUniqueId());
+                    for (String name : loadouts.keySet()) {
+                        if (!"default".equals(name)) {
+                            completions.add(name);
+                        }
+                    }
+                }
+            }
         }
 
         return completions;
