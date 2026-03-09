@@ -160,11 +160,13 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             if (rankManager.startSeason(seasonName)) {
                 MessageUtil.sendSuccessMessage(sender, "シーズン '" + seasonName + "' を開始しました！");
                 // Broadcast to all online players
-                Bukkit.broadcast(net.kyori.adventure.text.Component.text("")
-                    .append(net.kyori.adventure.text.Component.text("★ ", net.kyori.adventure.text.format.NamedTextColor.GOLD, net.kyori.adventure.text.format.TextDecoration.BOLD))
-                    .append(net.kyori.adventure.text.Component.text("新シーズン「" + seasonName + "」が開始されました！", net.kyori.adventure.text.format.NamedTextColor.YELLOW))
-                );
-                Bukkit.broadcast(net.kyori.adventure.text.Component.text("  全プレイヤーのRPがリセットされ、新たなランキング戦が始まります！", net.kyori.adventure.text.format.NamedTextColor.GREEN));
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.sendMessage(net.kyori.adventure.text.Component.text("")
+                        .append(net.kyori.adventure.text.Component.text("★ ", net.kyori.adventure.text.format.NamedTextColor.GOLD, net.kyori.adventure.text.format.TextDecoration.BOLD))
+                        .append(net.kyori.adventure.text.Component.text("新シーズン「" + seasonName + "」が開始されました！", net.kyori.adventure.text.format.NamedTextColor.YELLOW))
+                    );
+                    p.sendMessage(net.kyori.adventure.text.Component.text("  全プレイヤーのRPがリセットされ、新たなランキング戦が始まります！", net.kyori.adventure.text.format.NamedTextColor.GREEN));
+                }
             } else {
                 MessageUtil.sendErrorMessage(sender, "シーズンの開始に失敗しました。");
             }
@@ -178,11 +180,13 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             if (rankManager.endSeason()) {
                 MessageUtil.sendSuccessMessage(sender, "シーズン '" + endedSeasonName + "' を終了しました。全プレイヤーのRPをリセットしました。");
                 // Broadcast to all online players
-                Bukkit.broadcast(net.kyori.adventure.text.Component.text("")
-                    .append(net.kyori.adventure.text.Component.text("★ ", net.kyori.adventure.text.format.NamedTextColor.RED, net.kyori.adventure.text.format.TextDecoration.BOLD))
-                    .append(net.kyori.adventure.text.Component.text("シーズン「" + endedSeasonName + "」が終了しました！", net.kyori.adventure.text.format.NamedTextColor.YELLOW))
-                );
-                Bukkit.broadcast(net.kyori.adventure.text.Component.text("  全プレイヤーのRPが1000にリセットされました。お疲れ様でした！", net.kyori.adventure.text.format.NamedTextColor.AQUA));
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.sendMessage(net.kyori.adventure.text.Component.text("")
+                        .append(net.kyori.adventure.text.Component.text("★ ", net.kyori.adventure.text.format.NamedTextColor.RED, net.kyori.adventure.text.format.TextDecoration.BOLD))
+                        .append(net.kyori.adventure.text.Component.text("シーズン「" + endedSeasonName + "」が終了しました！", net.kyori.adventure.text.format.NamedTextColor.YELLOW))
+                    );
+                    p.sendMessage(net.kyori.adventure.text.Component.text("  全プレイヤーのRPが1000にリセットされました。お疲れ様でした！", net.kyori.adventure.text.format.NamedTextColor.AQUA));
+                }
             } else {
                 MessageUtil.sendErrorMessage(sender, "シーズンの終了に失敗しました。");
             }
