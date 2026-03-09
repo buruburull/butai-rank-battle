@@ -188,7 +188,7 @@ public class MatchDAO {
             placeholders.append("?");
         }
 
-        String sql = "SELECT mr.match_id, mr.uuid, p.player_name, mr.kills, mr.deaths, mr.placement "
+        String sql = "SELECT mr.match_id, mr.uuid, p.name AS player_name, mr.kills, mr.deaths, mr.placement "
                    + "FROM match_results mr "
                    + "JOIN players p ON mr.uuid = p.uuid "
                    + "WHERE mr.match_id IN (" + placeholders + ") "
