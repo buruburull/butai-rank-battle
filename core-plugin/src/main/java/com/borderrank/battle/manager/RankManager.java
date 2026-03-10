@@ -498,6 +498,16 @@ public class RankManager {
     }
 
     /**
+     * Gets a player from cache only (no DB lookup).
+     *
+     * @param playerId the UUID of the player
+     * @return the cached BRBPlayer, or null if not cached
+     */
+    public BRBPlayer getCachedPlayer(UUID playerId) {
+        return playerCache.get(playerId);
+    }
+
+    /**
      * Removes a player from cache.
      *
      * @param playerId the UUID of the player

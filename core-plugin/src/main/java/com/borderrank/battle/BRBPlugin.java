@@ -12,6 +12,7 @@ import com.borderrank.battle.listener.ProjectileListener;
 import com.borderrank.battle.listener.TriggerUseListener;
 import com.borderrank.battle.model.MapData;
 import com.borderrank.battle.manager.LoadoutManager;
+import com.borderrank.battle.manager.LobbyManager;
 import com.borderrank.battle.manager.MapManager;
 import com.borderrank.battle.manager.QueueManager;
 import com.borderrank.battle.manager.RankManager;
@@ -46,6 +47,7 @@ public class BRBPlugin extends JavaPlugin {
     private ScoreboardManager scoreboardManager;
     private MatchManager matchManager;
     private MatchDAO matchDAO;
+    private LobbyManager lobbyManager;
     private Location lobbyLocation;
 
     @Override
@@ -91,6 +93,9 @@ public class BRBPlugin extends JavaPlugin {
         // Load lobby location from triggers.yml
         loadLobbyLocation();
 
+        // Initialize lobby manager
+        lobbyManager = new LobbyManager(this);
+
         // Register commands
         getCommand("rank").setExecutor(new RankCommand());
         getCommand("trigger").setExecutor(new TriggerCommand());
@@ -104,15 +109,24 @@ public class BRBPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ProjectileListener(), this);
         getServer().getPluginManager().registerEvents(new ChatListener(), this);
         getServer().getPluginManager().registerEvents(new BlockChangeListener(), this);
+        getServer().getPluginManager().registerEvents(lobbyManager, this);
 
         // Start ticking tasks
         startTickingTasks();
+
+        // Setup lobby (NPCs, holograms, actionbar) - delay 1 tick to ensure world is loaded
+        getServer().getScheduler().scheduleSyncDelayedTask(this, () -> lobbyManager.setup(), 20);
 
         getLogger().info("Border Rank Battle plugin enabled!");
     }
 
     @Override
     public void onDisable() {
+        // Clean up lobby entities
+        if (lobbyManager != null) {
+            lobbyManager.cleanup();
+        }
+
         // Save all data and close database
         if (databaseManager != null) {
             databaseManager.close();
@@ -335,5 +349,12 @@ public class BRBPlugin extends JavaPlugin {
      */
     public MatchDAO getMatchDAO() {
         return matchDAO;
+    }
+
+    /**
+     * Get the lobby manager.
+     */
+    public LobbyManager getLobbyManager() {
+        return lobbyManager;
     }
 }

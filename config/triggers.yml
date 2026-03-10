@@ -325,12 +325,66 @@ match:
 # LOBBY SETTINGS
 # ============================================
 # Players teleport here on login and after match end.
-# Format: "x,y,z" or "x,y,z,yaw,pitch"
+# All locations use format: "x,y,z"
+# Coordinates can be changed from Pterodactyl file manager.
 lobby:
   world: "world"
   location: "0,65,0"
   yaw: 0.0
   pitch: 0.0
+
+  # ---- NPC Settings ----
+  # NPCs are villagers with custom names. Right-click to interact.
+  # Actions: rank_solo, rank_practice, trigger_view, rank_stats, rank_top
+  npcs:
+    ranked_match:
+      location: "3,65,0"
+      yaw: 180.0
+      name: "§6§lランクマッチ"
+      subtitle: "§7右クリックで参加"
+      action: "rank_solo"
+    practice_match:
+      location: "-3,65,0"
+      yaw: 180.0
+      name: "§b§l練習マッチ"
+      subtitle: "§7右クリックで参加"
+      action: "rank_practice"
+    loadout:
+      location: "0,65,3"
+      yaw: 180.0
+      name: "§a§lロードアウト"
+      subtitle: "§7右クリックで確認"
+      action: "trigger_view"
+    stats:
+      location: "0,65,-3"
+      yaw: 0.0
+      name: "§d§l戦績確認"
+      subtitle: "§7右クリックで表示"
+      action: "rank_stats"
+
+  # ---- Hologram Settings ----
+  # Floating text displays using TextDisplay entities.
+  # type: "static" (fixed text) or "ranking_top10" (auto-updated leaderboard)
+  holograms:
+    welcome:
+      location: "0,68,0"
+      lines:
+        - "§6§l⚔ Border Rank Battle ⚔"
+        - "§7NPCを右クリックして参加しよう"
+      type: "static"
+    ranking:
+      location: "6,67,0"
+      lines:
+        - "§e§l🏆 ランキング TOP10"
+      type: "ranking_top10"
+
+  # ---- Actionbar Settings ----
+  # Shows player status while in lobby.
+  # Placeholders: {rank}, {rp}, {queue_status}, {wins}, {losses}
+  actionbar:
+    enabled: true
+    format: "§7ランク: {rank} §8| §7RP: {rp} §8| §7{queue_status}"
+    update_interval: 40
 
 # ============================================
 # MAP DEFINITIONS
