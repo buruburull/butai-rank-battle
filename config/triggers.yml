@@ -329,8 +329,8 @@ match:
 # Coordinates can be changed from Pterodactyl file manager.
 lobby:
   world: "world"
-  location: "0,65,0"
-  yaw: 0.0
+  location: "50.46,115.00,-49.49"
+  yaw: 270.0
   pitch: 0.0
 
   # ---- NPC Settings ----
@@ -338,32 +338,32 @@ lobby:
   # Actions: rank_solo, rank_team, rank_practice, trigger_view, rank_stats, rank_top
   npcs:
     ranked_match:
-      location: "3,65,0"
-      yaw: 180.0
+      location: "63.51,116.00,-38.48"
+      yaw: 90.0
       name: "§6§lランクマッチ"
       subtitle: "§7右クリックで参加"
       action: "rank_solo"
     practice_match:
-      location: "-3,65,0"
-      yaw: 180.0
+      location: "65.48,116.00,-43.50"
+      yaw: 90.0
       name: "§b§l練習マッチ"
       subtitle: "§7右クリックで参加"
       action: "rank_practice"
     loadout:
-      location: "0,65,3"
+      location: "56.49,115.00,-25.51"
       yaw: 180.0
       name: "§a§lロードアウト"
       subtitle: "§7右クリックで確認"
       action: "trigger_view"
     stats:
-      location: "0,65,-3"
-      yaw: 0.0
+      location: "53.51,115.00,-25.50"
+      yaw: 180.0
       name: "§d§l戦績確認"
       subtitle: "§7右クリックで表示"
       action: "rank_stats"
     team_match:
-      location: "3,65,3"
-      yaw: 180.0
+      location: "66.51,116.00,-49.51"
+      yaw: 90.0
       name: "§c§lチームマッチ"
       subtitle: "§7右クリックで参加"
       action: "rank_team"
@@ -373,13 +373,13 @@ lobby:
   # type: "static" (fixed text) or "ranking_top10" (auto-updated leaderboard)
   holograms:
     welcome:
-      location: "0,68,0"
+      location: "52,117,-52"
       lines:
         - "§6§l⚔ Border Rank Battle ⚔"
         - "§7NPCを右クリックして参加しよう"
       type: "static"
     ranking:
-      location: "6,67,0"
+      location: "62.46,118.00,-35.52"
       lines:
         - "§e§l🏆 ランキング TOP10"
       type: "ranking_top10"
