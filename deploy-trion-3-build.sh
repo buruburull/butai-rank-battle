@@ -1,1 +1,0 @@
-cd ~/border-rank-battle && ./gradle-8.5/bin/gradle :core-plugin:shadowJar 2>&1 | tail -5 && cp core-plugin/build/libs/BorderRankBattle-0.1.0-SNAPSHOT.jar ~/minecraft-server/plugins/BorderRankBattle.jar && echo "✅ ビルド＆デプロイ完了！サーバーを再起動してください"
