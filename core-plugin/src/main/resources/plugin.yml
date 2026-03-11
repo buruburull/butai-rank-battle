@@ -1,30 +1,26 @@
-name: BorderRankBattle
-version: '${version}'
-main: com.borderrank.battle.BRBPlugin
+name: BUTAIRankBattle
+version: '0.1.0-SNAPSHOT'
+main: com.butai.rankbattle.BRBPlugin
 api-version: '1.21'
-description: World Trigger inspired rank battle system
-authors: [BorderRankTeam]
-website: https://github.com/your-org/border-rank-battle
+description: Competitive PvP plugin with Frame-based combat system
+authors: [buruburull]
 
 commands:
+  frame:
+    description: Frame management commands
+    usage: /frame <set|view|remove|list>
   rank:
-    description: ランク戦関連コマンド
-    usage: /rank <solo|team|practice|cancel|stats|top|history|spectate>
-  trigger:
-    description: トリガーセット管理
-    usage: /trigger <set|remove|list|view|preset>
+    description: Rank match commands
+    usage: /rank <solo|team|cancel|stats|top>
   team:
-    description: チーム管理
-    usage: /team <create|invite|leave|info>
+    description: Team management commands
+    usage: /team <create|invite|accept|deny|leave|info>
   bradmin:
-    description: 管理者コマンド
+    description: BRB admin commands
+    usage: /bradmin <frame|forcestart|rp|season>
     permission: brb.admin
-    usage: /bradmin <trigger|map|season|rp|forcestart>
 
 permissions:
   brb.admin:
-    description: 管理者権限
+    description: BRB administrator permission
     default: op
-  brb.play:
-    description: プレイ権限
-    default: true

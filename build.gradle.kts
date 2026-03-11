@@ -4,7 +4,7 @@ plugins {
 }
 
 allprojects {
-    group = "com.borderrank.battle"
+    group = "com.butai.rankbattle"
     version = "0.1.0-SNAPSHOT"
 
     repositories {

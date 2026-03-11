@@ -5,11 +5,10 @@ plugins {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     implementation(project(":common"))
-    implementation(project(":trigger-plugin"))
 }
 
 tasks.shadowJar {
-    archiveBaseName.set("BorderRankBattle")
+    archiveBaseName.set("BUTAIRankBattle")
     archiveClassifier.set("")
     mergeServiceFiles()
 }

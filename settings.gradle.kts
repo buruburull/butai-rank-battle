@@ -1,5 +1,4 @@
-rootProject.name = "border-rank-battle"
+rootProject.name = "butai-rank-battle"
 
 include("common")
 include("core-plugin")
-include("trigger-plugin")
