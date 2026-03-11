@@ -3,8 +3,11 @@ package com.butai.rankbattle;
 import com.butai.rankbattle.database.DatabaseManager;
 import com.butai.rankbattle.database.FrameSetDAO;
 import com.butai.rankbattle.database.PlayerDAO;
+import com.butai.rankbattle.command.FrameCommand;
 import com.butai.rankbattle.listener.PlayerConnectionListener;
+import com.butai.rankbattle.manager.FrameRegistry;
 import com.butai.rankbattle.manager.RankManager;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -19,6 +22,7 @@ public class BRBPlugin extends JavaPlugin {
     private PlayerDAO playerDAO;
     private FrameSetDAO frameSetDAO;
     private RankManager rankManager;
+    private FrameRegistry frameRegistry;
 
     public static BRBPlugin getInstance() {
         return instance;
@@ -53,12 +57,22 @@ public class BRBPlugin extends JavaPlugin {
         // Initialize managers
         rankManager = new RankManager(playerDAO, log);
 
-        // TODO: EtherManager, QueueManager, FrameRegistry, etc.
+        // Load frame registry
+        frameRegistry = new FrameRegistry(log);
+        frameRegistry.loadFromFile(new java.io.File(getDataFolder().getParentFile().getParentFile(), "config/frames.yml"));
+
+        // TODO: EtherManager, QueueManager, etc.
 
         // Register listeners
         getServer().getPluginManager().registerEvents(new PlayerConnectionListener(this, rankManager), this);
 
-        // TODO: Register commands
+        // Register commands
+        FrameCommand frameCommand = new FrameCommand(frameRegistry);
+        PluginCommand frameCmdObj = getCommand("frame");
+        if (frameCmdObj != null) {
+            frameCmdObj.setExecutor(frameCommand);
+            frameCmdObj.setTabCompleter(frameCommand);
+        }
 
         log.info("BRB プラグインが正常に起動しました！");
     }
@@ -91,5 +105,9 @@ public class BRBPlugin extends JavaPlugin {
 
     public RankManager getRankManager() {
         return rankManager;
+    }
+
+    public FrameRegistry getFrameRegistry() {
+        return frameRegistry;
     }
 }

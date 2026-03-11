@@ -1,0 +1,209 @@
+# BUTAI Rank Battle - Frame Definitions
+# category: striker, gunner, marksman, support
+# ether_use: per-activation cost
+# ether_sustain: per-second cost (toggle frames)
+# cooldown: seconds (0 = none)
+# damage_multiplier: base multiplier applied to attacks
+
+frames:
+  # ========== STRIKER (近接戦闘型) ==========
+  crescent:
+    name: "Crescent"
+    category: striker
+    mc_item: NETHERITE_SWORD
+    damage: 8
+    damage_multiplier: 1.3
+    ether_use: 0
+    ether_sustain: 0
+    cooldown: 0
+    description: "近接1.3倍ダメージ。高火力近接フレーム。"
+
+  fang:
+    name: "Fang"
+    category: striker
+    mc_item: GOLDEN_SWORD
+    damage: 5
+    damage_multiplier: 1.0
+    ether_use: 0
+    ether_sustain: 0
+    cooldown: 0
+    description: "背面攻撃1.5倍（合計2.25倍）。暗殺型フレーム。"
+
+  bastion:
+    name: "Bastion"
+    category: striker
+    mc_item: IRON_SWORD
+    damage: 6
+    damage_multiplier: 1.0
+    ether_use: 0
+    ether_sustain: 0
+    cooldown: 0
+    description: "シールドモード切替可能。攻防一体型。"
+
+  # ========== GUNNER (射撃型) ==========
+  pulse:
+    name: "Pulse"
+    category: gunner
+    mc_item: BOW
+    damage: 4
+    damage_multiplier: 1.0
+    ether_use: 10
+    ether_sustain: 0
+    cooldown: 0
+    description: "標準射撃フレーム。安定した命中率。"
+
+  nova:
+    name: "Nova"
+    category: gunner
+    mc_item: CROSSBOW
+    damage: 6
+    damage_multiplier: 1.0
+    ether_use: 20
+    ether_sustain: 0
+    cooldown: 0
+    description: "着弾時爆発（半径4.0, 威力5）。範囲攻撃型。"
+
+  seeker:
+    name: "Seeker"
+    category: gunner
+    mc_item: TRIDENT
+    damage: 5
+    damage_multiplier: 1.0
+    ether_use: 15
+    ether_sustain: 0
+    cooldown: 0
+    description: "ホーミング射撃（射程20.0）。追尾型。"
+
+  frost:
+    name: "Frost"
+    category: gunner
+    mc_item: BOW
+    damage: 3
+    damage_multiplier: 1.0
+    ether_use: 15
+    ether_sustain: 0
+    cooldown: 0
+    description: "命中時Slowness II 3秒。制圧型。"
+
+  # ========== MARKSMAN (狙撃型) ==========
+  falcon:
+    name: "Falcon"
+    category: marksman
+    mc_item: BOW
+    damage: 7
+    damage_multiplier: 2.5
+    ether_use: 25
+    ether_sustain: 0
+    cooldown: 0
+    description: "チャージ2.0秒で2.5倍ダメージ。精密射撃型。"
+
+  volt:
+    name: "Volt"
+    category: marksman
+    mc_item: BOW
+    damage: 6
+    damage_multiplier: 1.2
+    ether_use: 20
+    ether_sustain: 0
+    cooldown: 0
+    description: "貫通3体、1.2倍ダメージ。貫通型。"
+
+  zenith:
+    name: "Zenith"
+    category: marksman
+    mc_item: BOW
+    damage: 8
+    damage_multiplier: 3.0
+    ether_use: 35
+    ether_sustain: 0
+    cooldown: 0
+    description: "チャージ3.0秒で3.0倍ダメージ。最大火力。"
+
+  # ========== SUPPORT (補助型) ==========
+  leap:
+    name: "Leap"
+    category: support
+    mc_item: FEATHER
+    damage: 0
+    damage_multiplier: 1.0
+    ether_use: 40
+    ether_sustain: 0
+    cooldown: 8
+    description: "ジャンプ2.5倍。空中機動用。CT8秒。"
+
+  barrier:
+    name: "Barrier"
+    category: support
+    mc_item: SHIELD
+    damage: 0
+    damage_multiplier: 1.0
+    ether_use: 30
+    ether_sustain: 0
+    cooldown: 30
+    description: "吸収8.0付与。CT30秒。"
+
+  cloak:
+    name: "Cloak"
+    category: support
+    mc_item: LEATHER_HELMET
+    damage: 0
+    damage_multiplier: 1.0
+    ether_use: 0
+    ether_sustain: 15
+    cooldown: 0
+    description: "持続トグル。被ダメ60%カット。毎秒15エーテル。"
+
+  warp:
+    name: "Warp"
+    category: support
+    mc_item: ENDER_PEARL
+    damage: 0
+    damage_multiplier: 1.0
+    ether_use: 60
+    ether_sustain: 0
+    cooldown: 12
+    description: "瞬間移動32.0m。CT12秒。"
+
+  rampart:
+    name: "Rampart"
+    category: support
+    mc_item: GOLD_BLOCK
+    damage: 0
+    damage_multiplier: 1.0
+    ether_use: 50
+    ether_sustain: 0
+    cooldown: 0
+    description: "障壁生成。強度10.0、4秒持続。"
+
+  blast:
+    name: "Blast"
+    category: support
+    mc_item: TNT
+    damage: 0
+    damage_multiplier: 1.0
+    ether_use: 35
+    ether_sustain: 0
+    cooldown: 0
+    description: "爆発（半径5.0, 威力6.0）。"
+
+  tracer:
+    name: "Tracer"
+    category: support
+    mc_item: SPECTRAL_ARROW
+    damage: 0
+    damage_multiplier: 1.0
+    ether_use: 20
+    ether_sustain: 0
+    cooldown: 0
+    description: "発光効果5秒。視認距離64.0。"
+
+  core_frame:
+    name: "Core Frame"
+    category: support
+    mc_item: IRON_INGOT
+    damage: 0
+    damage_multiplier: 1.0
+    ether_use: 0
+    ether_sustain: 0
+    cooldown: 0
+    description: "フリー枠。コストなし。初心者向け。"

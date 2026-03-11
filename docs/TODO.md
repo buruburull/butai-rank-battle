@@ -49,17 +49,17 @@
 - [x] PlayerConnectionListener（初回参加時の自動DB登録）
 - [x] RankManager（プレイヤーキャッシュ、ランク判定）
 
-### 4. フレームシステム
-- [ ] Frame モデル
-- [ ] FrameData モデル（プロパティ: ダメージ、コスト、特殊効果）
-- [ ] FrameCategory enum（STRIKER, GUNNER, MARKSMAN, SUPPORT）
-- [ ] config/frames.yml 作成（15フレーム定義）
-  - [ ] STRIKER: Crescent, Fang, Bastion
-  - [ ] GUNNER: Pulse, Nova, Seeker, Frost
-  - [ ] MARKSMAN: Falcon, Volt, Zenith
-  - [ ] SUPPORT: Leap, Barrier, Cloak, Warp, Rampart, Blast, Tracer, Core Frame
-- [ ] FrameRegistry.java（frames.yml読み込み）
-- [ ] /frame list コマンド
+### 4. フレームシステム（完了）
+- [x] Frame モデル
+- [x] FrameData モデル（プロパティ: ダメージ、コスト、特殊効果）
+- [x] FrameCategory enum（STRIKER, GUNNER, MARKSMAN, SUPPORT）
+- [x] config/frames.yml 作成（18フレーム定義）
+  - [x] STRIKER: Crescent, Fang, Bastion
+  - [x] GUNNER: Pulse, Nova, Seeker, Frost
+  - [x] MARKSMAN: Falcon, Volt, Zenith
+  - [x] SUPPORT: Leap, Barrier, Cloak, Warp, Rampart, Blast, Tracer, Core Frame
+- [x] FrameRegistry.java（frames.yml読み込み）
+- [x] /frame list コマンド
 
 ### 5. フレームセット（装備構成）
 - [ ] FrameSet モデル（8スロット: メイン4 + サブ4）
