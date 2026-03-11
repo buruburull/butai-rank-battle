@@ -9,37 +9,37 @@
 - [x] 旧コードをlegacy/v1ブランチに退避
 - [x] v0-legacyタグ付与
 - [x] TODO.md作成（docs/TODO.md）
-- [ ] GitHubリポジトリ名変更（border-rank-battle → butai-rank-battle）
-- [ ] ローカルのリモートURL更新
+- [x] GitHubリポジトリ名変更（border-rank-battle → butai-rank-battle）
+- [x] ローカルのリモートURL更新
 
 ---
 
 ## Phase 1: コアシステム
 
-### 1. プロジェクト初期構築
-- [ ] mainブランチの旧コードをクリーン化（docs/のみ残す）
-- [ ] Gradle 8.5 + Kotlin DSL セットアップ（multi-module: common, core-plugin）
-- [ ] Paper 1.21+ 依存関係設定
-- [ ] Shadow Plugin 設定
-- [ ] plugin.yml 作成（BUTAIRankBattle）
-- [ ] パッケージ構造作成（com.butai.rankbattle）
-- [ ] .gitignore 更新
-- [ ] メインクラス BRBPlugin.java 作成（onEnable/onDisable）
+### 1. プロジェクト初期構築（完了）
+- [x] mainブランチの旧コードをクリーン化（docs/のみ残す）
+- [x] Gradle 8.5 + Kotlin DSL セットアップ（multi-module: common, core-plugin）
+- [x] Paper 1.21+ 依存関係設定
+- [x] Shadow Plugin 設定
+- [x] plugin.yml 作成（BUTAIRankBattle）
+- [x] パッケージ構造作成（com.butai.rankbattle）
+- [x] .gitignore 更新
+- [x] メインクラス BRBPlugin.java 作成（onEnable/onDisable）
 
-### 2. DB設計・スキーマ作成
-- [ ] docs/schema.sql 新規作成（新名称対応）
-- [ ] players テーブル
-- [ ] weapon_rp テーブル（STRIKER/GUNNER/MARKSMAN）
-- [ ] frame_master テーブル
-- [ ] player_framesets テーブル
-- [ ] teams / team_members テーブル
-- [ ] seasons テーブル
-- [ ] match_history / match_results テーブル
-- [ ] season_snapshots テーブル
-- [ ] ビュー: player_overall_ranking, recent_matches, weapon_popularity
-- [ ] DatabaseManager.java（HikariCP接続プール）
-- [ ] PlayerDAO.java
-- [ ] FrameSetDAO.java
+### 2. DB設計・スキーマ作成（完了）
+- [x] docs/schema.sql 新規作成（新名称対応）
+- [x] players テーブル
+- [x] weapon_rp テーブル（STRIKER/GUNNER/MARKSMAN）
+- [x] frame_master テーブル
+- [x] player_framesets テーブル
+- [x] teams / team_members テーブル
+- [x] seasons テーブル
+- [x] match_history / match_results テーブル
+- [x] season_snapshots テーブル
+- [x] ビュー: player_overall_ranking, recent_matches, weapon_popularity
+- [x] DatabaseManager.java（HikariCP接続プール）
+- [x] PlayerDAO.java
+- [x] FrameSetDAO.java
 
 ### 3. オペレーター登録システム
 - [ ] BRBPlayer モデル（UUID, name, rankClass, etherCap, weaponRPs）
