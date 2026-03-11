@@ -59,9 +59,10 @@ public class BRBPlugin extends JavaPlugin {
         // Initialize managers
         rankManager = new RankManager(playerDAO, log);
 
-        // Load frame registry
+        // Load frame registry (save default frames.yml to plugin data folder)
+        saveResource("frames.yml", false);
         frameRegistry = new FrameRegistry(log);
-        frameRegistry.loadFromFile(new java.io.File(getDataFolder().getParentFile().getParentFile(), "config/frames.yml"));
+        frameRegistry.loadFromFile(new java.io.File(getDataFolder(), "frames.yml"));
 
         // Initialize FrameSetManager
         frameSetManager = new FrameSetManager(frameRegistry, frameSetDAO, log);
