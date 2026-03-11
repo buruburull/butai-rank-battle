@@ -38,6 +38,8 @@ public class RankManager {
     private static final double OPPONENT_SCALING = 1.0 / 1000.0; // Divide opponent RP diff by 1000
     private static final int MIN_RP_CHANGE = 5;
     private static final int MAX_RP_CHANGE = 120;
+    private static final double LOSS_RATIO = 0.7; // Loser loses 70% of winner's gain (asymmetric)
+    private static final int PARTICIPATION_BONUS = 5; // RP bonus for all match participants
 
     /**
      * Constructs a RankManager with database access.
@@ -383,14 +385,27 @@ public class RankManager {
 
     /**
      * Calculates the RP change for losing a match.
-     * This is typically the negative of the winner's RP gain.
+     * Loser loses LOSS_RATIO (70%) of what the winner gains, making RP growth asymmetric.
+     * This ensures the overall RP pool grows over time, allowing rank progression.
      *
      * @param loserRP the RP of the losing player
      * @param winnerRP the RP of the winning player
      * @return the RP change for the loser (negative value)
      */
     public int calculateLossRP(int loserRP, int winnerRP) {
-        return -calculateSoloRP(winnerRP, loserRP);
+        int winnerGain = calculateSoloRP(winnerRP, loserRP);
+        int loss = (int) Math.round(winnerGain * LOSS_RATIO);
+        loss = Math.max(MIN_RP_CHANGE, loss); // At least MIN_RP_CHANGE lost
+        return -loss;
+    }
+
+    /**
+     * Gets the participation bonus RP awarded to all match participants.
+     *
+     * @return the participation bonus amount
+     */
+    public int getParticipationBonus() {
+        return PARTICIPATION_BONUS;
     }
 
     /**

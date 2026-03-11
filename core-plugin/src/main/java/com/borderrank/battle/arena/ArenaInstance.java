@@ -478,6 +478,9 @@ public class ArenaInstance {
                     rpGain = rankManager.calculateTeamRP(placement, playerKills, survived);
                 }
 
+                // Add participation bonus (ensures overall RP pool grows)
+                rpGain += rankManager.getParticipationBonus();
+
                 // Apply RP to the player's weapon type
                 WeaponType wt = playerWeaponTypes.getOrDefault(uuid, WeaponType.ATTACKER);
                 rankManager.addPlayerRP(uuid, wt.name(), rpGain);
