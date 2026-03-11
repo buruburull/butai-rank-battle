@@ -2,7 +2,6 @@ package com.borderrank.battle.manager;
 
 import com.borderrank.battle.BRBPlugin;
 import com.borderrank.battle.model.BRBPlayer;
-import com.borderrank.battle.model.WeaponRP;
 import com.borderrank.battle.util.MessageUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -273,15 +272,9 @@ public class LobbyManager implements Listener {
         // Replace placeholders
         msg = msg.replace("{rank}", brPlayer.getRankClass().name());
 
-        // Calculate average RP
-        int totalRP = 0;
-        int count = 0;
-        for (WeaponRP wrp : brPlayer.getWeaponRPs().values()) {
-            totalRP += wrp.getRp();
-            count++;
-        }
-        int avgRP = count > 0 ? totalRP / count : 1000;
-        msg = msg.replace("{rp}", String.valueOf(avgRP));
+        // Total RP (matches /rank stats and hologram display)
+        int totalRP = brPlayer.getTotalRP();
+        msg = msg.replace("{rp}", String.valueOf(totalRP));
 
         // Queue status
         QueueManager qm = plugin.getQueueManager();
