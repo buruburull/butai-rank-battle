@@ -19,7 +19,7 @@ public class DatabaseManager {
     public void initialize(String host, int port, String database, String username, String password) {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database
-                + "?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8mb4");
+                + "?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8");
         config.setUsername(username);
         config.setPassword(password);
 
