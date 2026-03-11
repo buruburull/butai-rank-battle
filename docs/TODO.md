@@ -61,18 +61,19 @@
 - [x] FrameRegistry.java（frames.yml読み込み）
 - [x] /frame list コマンド
 
-### 5. フレームセット（装備構成）
-- [ ] FrameSet モデル（8スロット: メイン4 + サブ4）
-- [ ] 装備制約バリデーション
-  - [ ] 重複禁止チェック
-  - [ ] スロット1必須（武器系のみ）チェック
-  - [ ] 武器タイプ決定ロジック（スロット1のカテゴリ）
-- [ ] /frame set <slot> <name> コマンド
-- [ ] /frame view コマンド
-- [ ] /frame remove <slot> コマンド
-- [ ] /frame preset save/load/list コマンド
-- [ ] FrameSetDAO.java（DB永続化）
-- [ ] キュー参加時のバリデーション
+### 5. フレームセット（装備構成）（完了）
+- [x] FrameSetManager.java（メモリキャッシュ、バリデーション、プリセット管理）
+- [x] 装備制約バリデーション
+  - [x] 重複禁止チェック
+  - [x] スロット1必須（武器系のみ）チェック
+  - [x] 武器タイプ決定ロジック（スロット1のカテゴリ）
+- [x] /frame set <slot> <name> コマンド
+- [x] /frame view コマンド
+- [x] /frame remove <slot> コマンド
+- [x] /frame preset save/load/list/delete コマンド
+- [x] FrameSetDAO.java（DB永続化）※Phase1-2で作成済み
+- [x] キュー参加時のバリデーション（validateForQueue）
+- [x] ログイン時DB読み込み・ログアウト時DB保存
 
 ### 6. エーテルシステム
 - [ ] EtherManager.java

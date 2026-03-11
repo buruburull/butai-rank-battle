@@ -6,6 +6,7 @@ import com.butai.rankbattle.database.PlayerDAO;
 import com.butai.rankbattle.command.FrameCommand;
 import com.butai.rankbattle.listener.PlayerConnectionListener;
 import com.butai.rankbattle.manager.FrameRegistry;
+import com.butai.rankbattle.manager.FrameSetManager;
 import com.butai.rankbattle.manager.RankManager;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -23,6 +24,7 @@ public class BRBPlugin extends JavaPlugin {
     private FrameSetDAO frameSetDAO;
     private RankManager rankManager;
     private FrameRegistry frameRegistry;
+    private FrameSetManager frameSetManager;
 
     public static BRBPlugin getInstance() {
         return instance;
@@ -61,13 +63,16 @@ public class BRBPlugin extends JavaPlugin {
         frameRegistry = new FrameRegistry(log);
         frameRegistry.loadFromFile(new java.io.File(getDataFolder().getParentFile().getParentFile(), "config/frames.yml"));
 
+        // Initialize FrameSetManager
+        frameSetManager = new FrameSetManager(frameRegistry, frameSetDAO, log);
+
         // TODO: EtherManager, QueueManager, etc.
 
         // Register listeners
-        getServer().getPluginManager().registerEvents(new PlayerConnectionListener(this, rankManager), this);
+        getServer().getPluginManager().registerEvents(new PlayerConnectionListener(this, rankManager, frameSetManager), this);
 
         // Register commands
-        FrameCommand frameCommand = new FrameCommand(frameRegistry);
+        FrameCommand frameCommand = new FrameCommand(frameRegistry, frameSetManager);
         PluginCommand frameCmdObj = getCommand("frame");
         if (frameCmdObj != null) {
             frameCmdObj.setExecutor(frameCommand);
@@ -109,5 +114,9 @@ public class BRBPlugin extends JavaPlugin {
 
     public FrameRegistry getFrameRegistry() {
         return frameRegistry;
+    }
+
+    public FrameSetManager getFrameSetManager() {
+        return frameSetManager;
     }
 }
