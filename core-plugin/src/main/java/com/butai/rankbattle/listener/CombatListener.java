@@ -21,7 +21,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerRespawnEvent;
+
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -185,6 +185,7 @@ public class CombatListener implements Listener {
      * Handle player death during matches.
      * - Prevent item drops
      * - Notify match of elimination
+     * - Auto-respawn → spectator mode (no death screen)
      */
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerDeath(PlayerDeathEvent event) {
@@ -196,55 +197,43 @@ public class CombatListener implements Listener {
         event.getDrops().clear();
         event.setDroppedExp(0);
         event.setKeepLevel(true);
+        event.setDeathMessage(null);
 
         // Notify match of elimination
         if (queueManager != null) {
             ArenaInstance match = queueManager.getPlayerMatch(victim.getUniqueId());
             if (match != null) {
-                // Get killer name for broadcast
                 Player killer = victim.getKiller();
                 String killerName = killer != null ? killer.getName() : "???";
                 String victimName = victim.getName();
-                event.setDeathMessage(null); // Suppress default death message
 
-                // Broadcast kill message to match players
                 match.broadcast("§c§l✖ " + victimName + " §7が §f" + killerName + " §7に倒されました！");
-
-                // Mark as eliminated (triggers win condition check)
                 match.onPlayerEliminated(victim.getUniqueId());
+
+                // Auto-respawn and set spectator mode (skip death screen)
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        if (!victim.isOnline()) return;
+                        victim.spigot().respawn();
+
+                        // Set spectator after respawn completes
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                if (!victim.isOnline()) return;
+                                Location specLoc = match.getSpectatorLocation();
+                                if (specLoc != null) {
+                                    victim.teleport(specLoc);
+                                }
+                                victim.setGameMode(GameMode.SPECTATOR);
+                                MessageUtil.send(victim, "§7観戦モードに切り替わりました。試合終了まで観戦できます。");
+                            }
+                        }.runTaskLater(BRBPlugin.getInstance(), 1L);
+                    }
+                }.runTaskLater(BRBPlugin.getInstance(), 1L);
             }
         }
-    }
-
-    /**
-     * Handle respawn after death during matches.
-     * Eliminated players respawn in spectator mode to watch the match.
-     */
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onPlayerRespawn(PlayerRespawnEvent event) {
-        Player player = event.getPlayer();
-        UUID uuid = player.getUniqueId();
-
-        if (queueManager == null) return;
-        ArenaInstance match = queueManager.getPlayerMatch(uuid);
-        if (match == null || !match.isEliminated(uuid)) return;
-
-        // Set respawn location to spectator position (above arena)
-        Location specLoc = match.getSpectatorLocation();
-        if (specLoc != null) {
-            event.setRespawnLocation(specLoc);
-        }
-
-        // Set spectator mode after 1 tick (must be delayed after respawn completes)
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (player.isOnline()) {
-                    player.setGameMode(GameMode.SPECTATOR);
-                    MessageUtil.send(player, "§7観戦モードに切り替わりました。試合終了まで観戦できます。");
-                }
-            }
-        }.runTaskLater(BRBPlugin.getInstance(), 1L);
     }
 
     /**
