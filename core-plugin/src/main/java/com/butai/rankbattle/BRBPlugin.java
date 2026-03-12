@@ -4,11 +4,13 @@ import com.butai.rankbattle.database.DatabaseManager;
 import com.butai.rankbattle.database.FrameSetDAO;
 import com.butai.rankbattle.database.PlayerDAO;
 import com.butai.rankbattle.command.FrameCommand;
+import com.butai.rankbattle.command.RankCommand;
 import com.butai.rankbattle.listener.CombatListener;
 import com.butai.rankbattle.listener.PlayerConnectionListener;
 import com.butai.rankbattle.manager.EtherManager;
 import com.butai.rankbattle.manager.FrameRegistry;
 import com.butai.rankbattle.manager.FrameSetManager;
+import com.butai.rankbattle.manager.QueueManager;
 import com.butai.rankbattle.manager.RankManager;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -30,6 +32,7 @@ public class BRBPlugin extends JavaPlugin {
     private FrameRegistry frameRegistry;
     private FrameSetManager frameSetManager;
     private EtherManager etherManager;
+    private QueueManager queueManager;
 
     public static BRBPlugin getInstance() {
         return instance;
@@ -85,7 +88,9 @@ public class BRBPlugin extends JavaPlugin {
         }
         // Tick loop will be started per-match (not globally at startup)
 
-        // TODO: QueueManager, etc.
+        // Initialize QueueManager
+        queueManager = new QueueManager(this, frameSetManager, log);
+        queueManager.startQueueChecker();
 
         // Register commands
         FrameCommand frameCommand = new FrameCommand(frameRegistry, frameSetManager);
@@ -95,11 +100,18 @@ public class BRBPlugin extends JavaPlugin {
             frameCmdObj.setTabCompleter(frameCommand);
         }
 
+        RankCommand rankCommand = new RankCommand(queueManager);
+        PluginCommand rankCmdObj = getCommand("rank");
+        if (rankCmdObj != null) {
+            rankCmdObj.setExecutor(rankCommand);
+            rankCmdObj.setTabCompleter(rankCommand);
+        }
+
         // Register listeners (after commands, so frameCommand is available)
         getServer().getPluginManager().registerEvents(
                 new PlayerConnectionListener(this, rankManager, frameSetManager, frameCommand), this);
         getServer().getPluginManager().registerEvents(
-                new CombatListener(etherManager, frameRegistry, log), this);
+                new CombatListener(etherManager, frameRegistry, queueManager, log), this);
 
         log.info("BRB プラグインが正常に起動しました！");
     }
@@ -108,12 +120,15 @@ public class BRBPlugin extends JavaPlugin {
     public void onDisable() {
         log.info("BRB プラグインを停止しています...");
 
+        // Stop queue checker
+        if (queueManager != null) {
+            queueManager.stopQueueChecker();
+        }
+
         // Stop ether tick loop
         if (etherManager != null) {
             etherManager.stopTickLoop();
         }
-
-        // TODO: 進行中マッチの終了処理
 
         // Close database
         if (databaseManager != null) {
@@ -149,5 +164,9 @@ public class BRBPlugin extends JavaPlugin {
 
     public EtherManager getEtherManager() {
         return etherManager;
+    }
+
+    public QueueManager getQueueManager() {
+        return queueManager;
     }
 }

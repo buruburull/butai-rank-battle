@@ -51,7 +51,11 @@ public class PlayerConnectionListener implements Listener {
     @EventHandler(priority = EventPriority.NORMAL)
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        // TODO: 試合中の切断処理（E-Shift）はここに追加
+
+        // Handle match disconnect (queue removal + E-Shift in match)
+        if (plugin.getQueueManager() != null) {
+            plugin.getQueueManager().handleDisconnect(player.getUniqueId());
+        }
 
         // Save frameset async, then unload
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {

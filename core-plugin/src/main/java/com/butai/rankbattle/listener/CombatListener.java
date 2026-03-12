@@ -1,8 +1,10 @@
 package com.butai.rankbattle.listener;
 
+import com.butai.rankbattle.arena.ArenaInstance;
 import com.butai.rankbattle.command.FrameCommand;
 import com.butai.rankbattle.manager.EtherManager;
 import com.butai.rankbattle.manager.FrameRegistry;
+import com.butai.rankbattle.manager.QueueManager;
 import com.butai.rankbattle.model.FrameData;
 import com.butai.rankbattle.util.MessageUtil;
 import org.bukkit.entity.Arrow;
@@ -43,6 +45,7 @@ public class CombatListener implements Listener {
 
     private final EtherManager etherManager;
     private final FrameRegistry frameRegistry;
+    private final QueueManager queueManager;
     private final Logger logger;
 
     // Teammate check callback (set by match system)
@@ -53,9 +56,11 @@ public class CombatListener implements Listener {
         boolean isTeammate(UUID player1, UUID player2);
     }
 
-    public CombatListener(EtherManager etherManager, FrameRegistry frameRegistry, Logger logger) {
+    public CombatListener(EtherManager etherManager, FrameRegistry frameRegistry,
+                          QueueManager queueManager, Logger logger) {
         this.etherManager = etherManager;
         this.frameRegistry = frameRegistry;
+        this.queueManager = queueManager;
         this.logger = logger;
     }
 
@@ -130,7 +135,16 @@ public class CombatListener implements Listener {
         }
 
         // Apply final damage
-        event.setDamage(damage * multiplier);
+        double finalDamage = damage * multiplier;
+        event.setDamage(finalDamage);
+
+        // Track damage dealt for judge scoring
+        if (queueManager != null) {
+            ArenaInstance match = queueManager.getPlayerMatch(attacker.getUniqueId());
+            if (match != null) {
+                match.addDamageDealt(attacker.getUniqueId(), finalDamage);
+            }
+        }
     }
 
     /**

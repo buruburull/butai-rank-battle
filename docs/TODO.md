@@ -101,18 +101,21 @@
 - [x] フレンドリーファイア防止（チーム戦）
 - [x] Cloak: 被ダメ60%カット
 
-### 8. ソロランクマッチ
-- [ ] QueueManager.java（ソロキュー管理）
-- [ ] ArenaInstance.java（マッチインスタンス管理）
-- [ ] マッチ状態遷移: WAITING → COUNTDOWN → ACTIVE → ENDING → FINISHED
-- [ ] /rank solo コマンド（キュー参加）
-- [ ] /rank cancel コマンド（キューキャンセル）
-- [ ] カウントダウン（10秒）
-- [ ] スポーン処理（getHighestBlockAt使用）
-- [ ] 制限時間: 5分（300秒）
-- [ ] 勝利条件: 相手を倒す or 時間切れ→ジャッジ
-- [ ] 試合終了→ロビーへ帰還
-- [ ] 二重終了防止
+### 8. ソロランクマッチ（完了）
+- [x] QueueManager.java（ソロキュー管理）
+- [x] ArenaInstance.java（マッチインスタンス管理）
+- [x] マッチ状態遷移: WAITING → COUNTDOWN → ACTIVE → ENDING → FINISHED
+- [x] /rank solo コマンド（キュー参加）
+- [x] /rank cancel コマンド（キューキャンセル）
+- [x] /rank practice コマンド（プラクティスマッチ）
+- [x] カウントダウン（10秒）
+- [x] スポーン処理（getHighestBlockAt使用）
+- [x] 制限時間: ソロ5分 / チーム10分
+- [x] 勝利条件: 相手を倒す or 時間切れ→ジャッジ
+- [x] 試合終了→ロビーへ帰還
+- [x] 二重終了防止
+- [x] 切断時の即E-Shift処理
+- [x] ダメージトラッキング（ジャッジスコア用）
 
 ### 9. ジャッジシステム・サドンデス
 - [ ] ジャッジスコア計算: 与ダメ×0.5 + エーテル残量×0.3 + HP残量×0.2
