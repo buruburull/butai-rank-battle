@@ -3,8 +3,10 @@ package com.butai.rankbattle;
 import com.butai.rankbattle.database.DatabaseManager;
 import com.butai.rankbattle.database.FrameSetDAO;
 import com.butai.rankbattle.database.PlayerDAO;
+import com.butai.rankbattle.database.TeamDAO;
 import com.butai.rankbattle.command.FrameCommand;
 import com.butai.rankbattle.command.RankCommand;
+import com.butai.rankbattle.command.TeamCommand;
 import com.butai.rankbattle.listener.CombatListener;
 import com.butai.rankbattle.listener.PlayerConnectionListener;
 import com.butai.rankbattle.manager.EtherManager;
@@ -66,7 +68,9 @@ public class BRBPlugin extends JavaPlugin {
         frameSetDAO = new FrameSetDAO(databaseManager, log);
 
         // Initialize managers
+        TeamDAO teamDAO = new TeamDAO(databaseManager, log);
         rankManager = new RankManager(playerDAO, log);
+        rankManager.setTeamDAO(teamDAO);
 
         // Load frame registry (save default frames.yml to plugin data folder)
         if (!new java.io.File(getDataFolder(), "frames.yml").exists()) {
@@ -108,6 +112,13 @@ public class BRBPlugin extends JavaPlugin {
         if (rankCmdObj != null) {
             rankCmdObj.setExecutor(rankCommand);
             rankCmdObj.setTabCompleter(rankCommand);
+        }
+
+        TeamCommand teamCommand = new TeamCommand(rankManager);
+        PluginCommand teamCmdObj = getCommand("team");
+        if (teamCmdObj != null) {
+            teamCmdObj.setExecutor(teamCommand);
+            teamCmdObj.setTabCompleter(teamCommand);
         }
 
         // Register listeners (after commands, so frameCommand is available)

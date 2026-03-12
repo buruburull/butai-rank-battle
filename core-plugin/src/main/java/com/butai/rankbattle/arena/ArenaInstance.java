@@ -551,7 +551,7 @@ public class ArenaInstance {
                 winnerPlayer.sendTitle("§a§l勝利！", "§7おめでとうございます！", 5, 60, 20);
             }
             if (loserPlayer != null) {
-                loserPlayer.sendTitle("§c§l敗北", "§7次回頑張りましょう", 5, 60, 20);
+                loserPlayer.sendTitle("§c§l敗北", "", 5, 60, 20);
             }
 
             // Apply RP changes (ranked matches only)

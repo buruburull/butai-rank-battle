@@ -138,15 +138,15 @@
 - [x] /rank top [weapon] コマンド（TOP10）
 - [x] DB保存（weapon_rp更新）
 
-### 11. チームシステム
-- [ ] Team モデル（name, leaderId, members）
-- [ ] /team create <name> コマンド（B rank+必須）
-- [ ] /team invite <player> コマンド
-- [ ] /team accept / deny コマンド
-- [ ] /team leave コマンド
-- [ ] /team info [name] コマンド
-- [ ] pendingInvites管理
-- [ ] DB永続化（teams, team_members）
+### 11. チームシステム（完了）
+- [x] Team モデル（name, leaderId, members）
+- [x] /team create <name> コマンド（B rank+必須）
+- [x] /team invite <player> コマンド
+- [x] /team accept / deny コマンド
+- [x] /team leave コマンド
+- [x] /team info [name] コマンド
+- [x] pendingInvites管理
+- [x] DB永続化（teams, team_members）
 
 ### 12. チームランクマッチ
 - [ ] チームキュー（/rank team）
