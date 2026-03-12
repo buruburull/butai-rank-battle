@@ -1,6 +1,7 @@
 package com.butai.rankbattle.arena;
 
 import com.butai.rankbattle.BRBPlugin;
+import com.butai.rankbattle.command.FrameCommand;
 import com.butai.rankbattle.manager.EtherManager;
 import com.butai.rankbattle.util.MessageUtil;
 import org.bukkit.Bukkit;
@@ -460,6 +461,7 @@ public class ArenaInstance {
      */
     private void finishMatch() {
         state = MatchState.FINISHED;
+        FrameCommand fc = plugin.getFrameCommand();
 
         for (UUID uuid : players) {
             etherManager.removePlayer(uuid);
@@ -470,6 +472,8 @@ public class ArenaInstance {
                 } else {
                     p.teleport(p.getWorld().getSpawnLocation());
                 }
+                // Restore hotbar items
+                if (fc != null) fc.refreshHotbar(p);
             }
         }
 
@@ -494,13 +498,15 @@ public class ArenaInstance {
             return;
         }
 
+        FrameCommand fc = plugin.getFrameCommand();
+
         if (teamData.isEmpty()) {
             // Solo: player 0 to spawn1, player 1 to spawn2
             if (players.size() >= 2) {
                 Player p1 = Bukkit.getPlayer(players.get(0));
                 Player p2 = Bukkit.getPlayer(players.get(1));
-                if (p1 != null) { p1.setGameMode(GameMode.SURVIVAL); p1.teleport(spawn1); }
-                if (p2 != null) { p2.setGameMode(GameMode.SURVIVAL); p2.teleport(spawn2); }
+                if (p1 != null) { p1.setGameMode(GameMode.SURVIVAL); p1.teleport(spawn1); if (fc != null) fc.refreshHotbar(p1); }
+                if (p2 != null) { p2.setGameMode(GameMode.SURVIVAL); p2.teleport(spawn2); if (fc != null) fc.refreshHotbar(p2); }
             }
         } else {
             // Team: team 0 to spawn1 area, team 1 to spawn2 area
@@ -513,6 +519,7 @@ public class ArenaInstance {
                     if (p != null) {
                         p.setGameMode(GameMode.SURVIVAL);
                         p.teleport(spawn1.clone().add(offset * 2, 0, 0));
+                        if (fc != null) fc.refreshHotbar(p);
                         offset++;
                     }
                 }
@@ -524,6 +531,7 @@ public class ArenaInstance {
                     if (p != null) {
                         p.setGameMode(GameMode.SURVIVAL);
                         p.teleport(spawn2.clone().add(offset * 2, 0, 0));
+                        if (fc != null) fc.refreshHotbar(p);
                         offset++;
                     }
                 }

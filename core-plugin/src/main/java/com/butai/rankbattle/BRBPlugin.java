@@ -33,6 +33,7 @@ public class BRBPlugin extends JavaPlugin {
     private FrameSetManager frameSetManager;
     private EtherManager etherManager;
     private QueueManager queueManager;
+    private FrameCommand frameCommand;
 
     public static BRBPlugin getInstance() {
         return instance;
@@ -95,7 +96,7 @@ public class BRBPlugin extends JavaPlugin {
         queueManager.startQueueChecker();
 
         // Register commands
-        FrameCommand frameCommand = new FrameCommand(frameRegistry, frameSetManager);
+        frameCommand = new FrameCommand(frameRegistry, frameSetManager);
         PluginCommand frameCmdObj = getCommand("frame");
         if (frameCmdObj != null) {
             frameCmdObj.setExecutor(frameCommand);
@@ -170,5 +171,9 @@ public class BRBPlugin extends JavaPlugin {
 
     public QueueManager getQueueManager() {
         return queueManager;
+    }
+
+    public FrameCommand getFrameCommand() {
+        return frameCommand;
     }
 }

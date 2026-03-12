@@ -186,9 +186,11 @@ public class CombatListener implements Listener {
         Player victim = event.getEntity();
         if (!etherManager.isTracking(victim.getUniqueId())) return;
 
-        // Prevent item drops and XP drops
+        // Prevent item drops and XP drops (keep inventory)
+        event.setKeepInventory(true);
         event.getDrops().clear();
         event.setDroppedExp(0);
+        event.setKeepLevel(true);
 
         // Notify match of elimination
         if (queueManager != null) {
