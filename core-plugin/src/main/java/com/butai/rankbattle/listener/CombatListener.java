@@ -7,6 +7,9 @@ import com.butai.rankbattle.manager.FrameRegistry;
 import com.butai.rankbattle.manager.QueueManager;
 import com.butai.rankbattle.model.FrameData;
 import com.butai.rankbattle.util.MessageUtil;
+import com.butai.rankbattle.BRBPlugin;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -18,11 +21,13 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.Set;
@@ -209,6 +214,37 @@ public class CombatListener implements Listener {
                 match.onPlayerEliminated(victim.getUniqueId());
             }
         }
+    }
+
+    /**
+     * Handle respawn after death during matches.
+     * Eliminated players respawn in spectator mode to watch the match.
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPlayerRespawn(PlayerRespawnEvent event) {
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+
+        if (queueManager == null) return;
+        ArenaInstance match = queueManager.getPlayerMatch(uuid);
+        if (match == null || !match.isEliminated(uuid)) return;
+
+        // Set respawn location to spectator position (above arena)
+        Location specLoc = match.getSpectatorLocation();
+        if (specLoc != null) {
+            event.setRespawnLocation(specLoc);
+        }
+
+        // Set spectator mode after 1 tick (must be delayed after respawn completes)
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (player.isOnline()) {
+                    player.setGameMode(GameMode.SPECTATOR);
+                    MessageUtil.send(player, "§7観戦モードに切り替わりました。試合終了まで観戦できます。");
+                }
+            }
+        }.runTaskLater(BRBPlugin.getInstance(), 1L);
     }
 
     /**

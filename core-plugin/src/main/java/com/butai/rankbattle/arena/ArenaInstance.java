@@ -853,6 +853,14 @@ public class ArenaInstance {
     }
 
     /**
+     * Get spectator location (midpoint between spawns, elevated).
+     */
+    public Location getSpectatorLocation() {
+        if (spawn1 == null || spawn2 == null) return null;
+        return spawn1.clone().add(spawn2).multiply(0.5).add(0, 10, 0);
+    }
+
+    /**
      * Get damage dealt by a player.
      */
     public double getDamageDealt(UUID uuid) {
