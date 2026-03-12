@@ -94,16 +94,35 @@ public class FrameCommand implements CommandExecutor, TabCompleter {
      */
     public void refreshHotbar(Player player) {
         String[] slots = frameSetManager.getFrameSet(player.getUniqueId());
+        boolean needsArrows = false;
+
         for (int i = 0; i < 8; i++) {
             if (slots[i] != null) {
                 FrameData data = frameRegistry.getFrame(slots[i]);
                 if (data != null) {
                     giveFrameItem(player, data, i + 1);
+
+                    // Check if this frame uses a ranged weapon that needs arrows
+                    String mcItem = data.getMcItem();
+                    if ("BOW".equals(mcItem) || "CROSSBOW".equals(mcItem)) {
+                        needsArrows = true;
+                    }
                     continue;
                 }
             }
             // Clear slot if empty or invalid
             player.getInventory().setItem(i, null);
+        }
+
+        // Give arrows if any ranged frame is equipped (slot 9 = offhand area, use slot 8 for arrows)
+        if (needsArrows) {
+            // Place arrows in slot 8 (hotbar slot 9) if empty, or add to inventory
+            ItemStack arrows = new ItemStack(Material.ARROW, 64);
+            if (player.getInventory().getItem(8) == null) {
+                player.getInventory().setItem(8, arrows);
+            } else if (!player.getInventory().contains(Material.ARROW)) {
+                player.getInventory().addItem(arrows);
+            }
         }
     }
 

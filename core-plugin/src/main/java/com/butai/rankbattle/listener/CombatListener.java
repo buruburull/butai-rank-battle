@@ -54,24 +54,12 @@ public class CombatListener implements Listener {
     private final QueueManager queueManager;
     private final Logger logger;
 
-    // Teammate check callback (set by match system)
-    private TeammateChecker teammateChecker;
-
-    @FunctionalInterface
-    public interface TeammateChecker {
-        boolean isTeammate(UUID player1, UUID player2);
-    }
-
     public CombatListener(EtherManager etherManager, FrameRegistry frameRegistry,
                           QueueManager queueManager, Logger logger) {
         this.etherManager = etherManager;
         this.frameRegistry = frameRegistry;
         this.queueManager = queueManager;
         this.logger = logger;
-    }
-
-    public void setTeammateChecker(TeammateChecker checker) {
-        this.teammateChecker = checker;
     }
 
     /**
@@ -90,11 +78,13 @@ public class CombatListener implements Listener {
             return;
         }
 
-        // Friendly fire prevention
-        if (teammateChecker != null &&
-                teammateChecker.isTeammate(attacker.getUniqueId(), victim.getUniqueId())) {
-            event.setCancelled(true);
-            return;
+        // Friendly fire prevention (check via match's isTeammate)
+        if (queueManager != null) {
+            ArenaInstance match = queueManager.getPlayerMatch(attacker.getUniqueId());
+            if (match != null && match.isTeammate(attacker.getUniqueId(), victim.getUniqueId())) {
+                event.setCancelled(true);
+                return;
+            }
         }
 
         // Get the frame used by the attacker
