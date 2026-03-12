@@ -3,9 +3,11 @@ package com.butai.rankbattle.listener;
 import com.butai.rankbattle.BRBPlugin;
 import com.butai.rankbattle.command.FrameCommand;
 import com.butai.rankbattle.manager.FrameSetManager;
+import com.butai.rankbattle.manager.LobbyManager;
 import com.butai.rankbattle.manager.RankManager;
 import com.butai.rankbattle.model.BRBPlayer;
 import com.butai.rankbattle.util.MessageUtil;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -39,6 +41,14 @@ public class PlayerConnectionListener implements Listener {
 
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (player.isOnline()) {
+                    // Teleport to lobby and set ADVENTURE mode
+                    LobbyManager lobbyManager = plugin.getLobbyManager();
+                    if (lobbyManager != null) {
+                        lobbyManager.sendToLobby(player);
+                    } else {
+                        player.setGameMode(GameMode.ADVENTURE);
+                    }
+
                     frameCommand.refreshHotbar(player);
                     MessageUtil.send(player, "§6BUTAI Rank Battle §7へようこそ！");
                     MessageUtil.sendInfo(player, "ランク: " + brbPlayer.getRankClass().getColoredName()

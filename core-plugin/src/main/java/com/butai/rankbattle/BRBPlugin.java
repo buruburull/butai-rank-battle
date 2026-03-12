@@ -9,10 +9,12 @@ import com.butai.rankbattle.command.FrameCommand;
 import com.butai.rankbattle.command.RankCommand;
 import com.butai.rankbattle.command.TeamCommand;
 import com.butai.rankbattle.listener.CombatListener;
+import com.butai.rankbattle.listener.LobbyListener;
 import com.butai.rankbattle.listener.PlayerConnectionListener;
 import com.butai.rankbattle.manager.EtherManager;
 import com.butai.rankbattle.manager.FrameRegistry;
 import com.butai.rankbattle.manager.FrameSetManager;
+import com.butai.rankbattle.manager.LobbyManager;
 import com.butai.rankbattle.manager.QueueManager;
 import com.butai.rankbattle.manager.RankManager;
 import org.bukkit.Location;
@@ -36,6 +38,7 @@ public class BRBPlugin extends JavaPlugin {
     private FrameSetManager frameSetManager;
     private EtherManager etherManager;
     private QueueManager queueManager;
+    private LobbyManager lobbyManager;
     private FrameCommand frameCommand;
 
     public static BRBPlugin getInstance() {
@@ -129,11 +132,16 @@ public class BRBPlugin extends JavaPlugin {
             adminCmdObj.setTabCompleter(adminCommand);
         }
 
+        // Initialize LobbyManager (NPCs, holograms, action bar)
+        lobbyManager = new LobbyManager(this, log);
+        lobbyManager.initialize();
+
         // Register listeners (after commands, so frameCommand is available)
         getServer().getPluginManager().registerEvents(
                 new PlayerConnectionListener(this, rankManager, frameSetManager, frameCommand), this);
         getServer().getPluginManager().registerEvents(
                 new CombatListener(etherManager, frameRegistry, queueManager, log), this);
+        getServer().getPluginManager().registerEvents(new LobbyListener(), this);
 
         log.info("BRB プラグインが正常に起動しました！");
     }
@@ -141,6 +149,11 @@ public class BRBPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         log.info("BRB プラグインを停止しています...");
+
+        // Shutdown lobby (remove NPCs, holograms, stop tasks)
+        if (lobbyManager != null) {
+            lobbyManager.shutdown();
+        }
 
         // Stop queue checker
         if (queueManager != null) {
@@ -190,6 +203,10 @@ public class BRBPlugin extends JavaPlugin {
 
     public QueueManager getQueueManager() {
         return queueManager;
+    }
+
+    public LobbyManager getLobbyManager() {
+        return lobbyManager;
     }
 
     public FrameCommand getFrameCommand() {
