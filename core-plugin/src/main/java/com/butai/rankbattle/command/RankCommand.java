@@ -4,6 +4,7 @@ import com.butai.rankbattle.manager.QueueManager;
 import com.butai.rankbattle.manager.RankManager;
 import com.butai.rankbattle.model.BRBPlayer;
 import com.butai.rankbattle.model.RankClass;
+import com.butai.rankbattle.model.Team;
 import com.butai.rankbattle.model.WeaponRP;
 import com.butai.rankbattle.model.WeaponType;
 import com.butai.rankbattle.util.MessageUtil;
@@ -47,6 +48,7 @@ public class RankCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase();
         return switch (sub) {
             case "solo" -> handleSolo(player);
+            case "team" -> handleTeam(player);
             case "practice" -> handlePractice(player);
             case "cancel" -> handleCancel(player);
             case "status" -> handleStatus(player);
@@ -69,6 +71,34 @@ public class RankCommand implements CommandExecutor, TabCompleter {
         MessageUtil.sendSuccess(player, "§fソロランク §7キューに参加しました。");
         MessageUtil.sendInfo(player, "キュー内: §f" + queueManager.getSoloQueueSize() + "人 §7| マッチング待機中...");
         MessageUtil.sendInfo(player, "キャンセル: §e/rank cancel");
+        return true;
+    }
+
+    private boolean handleTeam(Player player) {
+        String error = queueManager.joinTeamQueue(player.getUniqueId());
+        if (error != null) {
+            MessageUtil.sendError(player, error);
+            return true;
+        }
+
+        Team team = rankManager.getTeam(player.getUniqueId());
+        String teamName = team != null ? team.getName() : "???";
+
+        MessageUtil.sendSuccess(player, "§fチームランク §7キューに参加しました。 §8[§f" + teamName + "§8]");
+        MessageUtil.sendInfo(player, "チームキュー内: §f" + queueManager.getTeamQueueSize() + "チーム §7| マッチング待機中...");
+        MessageUtil.sendInfo(player, "キャンセル: §e/rank cancel");
+
+        // Notify team members
+        if (team != null) {
+            for (UUID memberUuid : team.getMembers()) {
+                if (memberUuid.equals(player.getUniqueId())) continue;
+                Player member = Bukkit.getPlayer(memberUuid);
+                if (member != null) {
+                    MessageUtil.sendInfo(member, "チームリーダー §f" + player.getName() + " §7がチームランクキューに参加しました。");
+                }
+            }
+        }
+
         return true;
     }
 
@@ -257,6 +287,7 @@ public class RankCommand implements CommandExecutor, TabCompleter {
     private void sendUsage(Player player) {
         MessageUtil.send(player, "§6/rank コマンド一覧:");
         player.sendMessage("  §e/rank solo §7- ソロランクマッチに参加");
+        player.sendMessage("  §e/rank team §7- チームランクマッチに参加（リーダーのみ）");
         player.sendMessage("  §e/rank practice §7- プラクティス（RP変動なし）");
         player.sendMessage("  §e/rank cancel §7- キューから離脱");
         player.sendMessage("  §e/rank status §7- 現在のステータス");
@@ -268,7 +299,7 @@ public class RankCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
-            completions.addAll(List.of("solo", "practice", "cancel", "status", "stats", "top"));
+            completions.addAll(List.of("solo", "team", "practice", "cancel", "status", "stats", "top"));
         } else if (args.length == 2) {
             String sub = args[0].toLowerCase();
             if ("top".equals(sub)) {

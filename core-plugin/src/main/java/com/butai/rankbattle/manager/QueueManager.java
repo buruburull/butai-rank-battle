@@ -10,6 +10,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
+import com.butai.rankbattle.model.Team;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
@@ -26,6 +28,8 @@ public class QueueManager {
 
     // Solo ranked queue
     private final Queue<UUID> soloQueue = new ConcurrentLinkedQueue<>();
+    // Team ranked queue (stores leader UUID, team data fetched from RankManager)
+    private final Queue<UUID> teamQueue = new ConcurrentLinkedQueue<>();
     // Practice queue
     private final Queue<UUID> practiceQueue = new ConcurrentLinkedQueue<>();
 
@@ -90,6 +94,54 @@ public class QueueManager {
     }
 
     /**
+     * Add a team to the team ranked queue.
+     * Only the team leader can queue. All members must be online and not in queue/match.
+     * Returns null on success, or an error message.
+     */
+    public String joinTeamQueue(UUID leaderUuid) {
+        RankManager rankManager = plugin.getRankManager();
+        Team team = rankManager.getTeam(leaderUuid);
+        if (team == null) {
+            return "チームに所属していません。";
+        }
+        if (!team.isLeader(leaderUuid)) {
+            return "チームリーダーのみキューに参加できます。";
+        }
+        if (team.getMemberCount() < 2) {
+            return "チームメンバーが2人以上必要です。";
+        }
+
+        // Check all members
+        for (UUID member : team.getMembers()) {
+            if (!isOnline(member)) {
+                Player p = Bukkit.getPlayer(member);
+                String name = p != null ? p.getName() : member.toString().substring(0, 8);
+                return "メンバー " + name + " がオフラインです。";
+            }
+            if (isInQueue(member)) {
+                return "チームメンバーが既にキューに参加しています。";
+            }
+            if (isInMatch(member)) {
+                return "チームメンバーが試合中です。";
+            }
+            // Validate frameset for each member
+            String validation = frameSetManager.validateForQueue(member);
+            if (validation != null) {
+                Player p = Bukkit.getPlayer(member);
+                String name = p != null ? p.getName() : member.toString().substring(0, 8);
+                return name + ": " + validation;
+            }
+        }
+
+        if (teamQueue.contains(leaderUuid)) {
+            return "既にチームキューに参加しています。";
+        }
+
+        teamQueue.add(leaderUuid);
+        return null;
+    }
+
+    /**
      * Add a player to the practice queue.
      */
     public String joinPracticeQueue(UUID uuid) {
@@ -115,7 +167,16 @@ public class QueueManager {
      */
     public boolean leaveQueue(UUID uuid) {
         boolean removed = soloQueue.remove(uuid);
+        removed |= teamQueue.remove(uuid);
         removed |= practiceQueue.remove(uuid);
+
+        // Also check if this player's team leader is in team queue
+        RankManager rankManager = plugin.getRankManager();
+        Team team = rankManager.getTeam(uuid);
+        if (team != null && teamQueue.remove(team.getLeaderId())) {
+            removed = true;
+        }
+
         return removed;
     }
 
@@ -123,7 +184,13 @@ public class QueueManager {
      * Check if a player is in any queue.
      */
     public boolean isInQueue(UUID uuid) {
-        return soloQueue.contains(uuid) || practiceQueue.contains(uuid);
+        if (soloQueue.contains(uuid) || practiceQueue.contains(uuid) || teamQueue.contains(uuid)) {
+            return true;
+        }
+        // Check if member's team leader is in team queue
+        RankManager rankManager = plugin.getRankManager();
+        Team team = rankManager.getTeam(uuid);
+        return team != null && teamQueue.contains(team.getLeaderId());
     }
 
     /**
@@ -156,6 +223,28 @@ public class QueueManager {
             if (!isOnline(p2)) { soloQueue.add(p1); continue; }
 
             createMatch(p1, p2, ArenaInstance.MatchType.SOLO_RANKED);
+        }
+
+        // Team ranked: need 2 teams
+        while (teamQueue.size() >= 2) {
+            UUID leader1 = teamQueue.poll();
+            UUID leader2 = teamQueue.poll();
+
+            RankManager rm = plugin.getRankManager();
+            Team team1 = rm.getTeam(leader1);
+            Team team2 = rm.getTeam(leader2);
+
+            // Verify teams are still valid and all members online
+            if (team1 == null || !allMembersOnline(team1)) {
+                if (team2 != null) teamQueue.add(leader2);
+                continue;
+            }
+            if (team2 == null || !allMembersOnline(team2)) {
+                teamQueue.add(leader1);
+                continue;
+            }
+
+            createTeamMatch(team1, team2);
         }
 
         // Practice: need 2 players
@@ -273,6 +362,71 @@ public class QueueManager {
      */
     public int getActiveMatchCount() {
         return activeMatches.size();
+    }
+
+    /**
+     * Create a new team match between two teams.
+     */
+    private void createTeamMatch(Team team1, Team team2) {
+        ArenaInstance match = new ArenaInstance(plugin, ArenaInstance.MatchType.TEAM_RANKED);
+        match.addTeams(team1.getMembers(), team2.getMembers());
+
+        // Get arena spawn points
+        Player anyPlayer = Bukkit.getPlayer(team1.getLeaderId());
+        if (anyPlayer != null) {
+            World world = anyPlayer.getWorld();
+            Location center = world.getSpawnLocation();
+            // Spawn teams 30 blocks apart
+            Location s1 = center.clone().add(15, 0, 0);
+            s1.setY(world.getHighestBlockYAt(s1.getBlockX(), s1.getBlockZ()) + 1);
+            Location s2 = center.clone().add(-15, 0, 0);
+            s2.setY(world.getHighestBlockYAt(s2.getBlockX(), s2.getBlockZ()) + 1);
+            match.setSpawnLocations(s1, s2);
+        }
+
+        // Set lobby location
+        String lobbyWorld = plugin.getConfig().getString("lobby.world", "world");
+        World lw = Bukkit.getWorld(lobbyWorld);
+        if (lw != null) {
+            double lx = plugin.getConfig().getDouble("lobby.x", lw.getSpawnLocation().getX());
+            double ly = plugin.getConfig().getDouble("lobby.y", lw.getSpawnLocation().getY());
+            double lz = plugin.getConfig().getDouble("lobby.z", lw.getSpawnLocation().getZ());
+            match.setLobbyLocation(new Location(lw, lx, ly, lz));
+        }
+
+        // Register match
+        activeMatches.put(match.getMatchId(), match);
+        for (UUID uuid : match.getPlayers()) {
+            playerMatchMap.put(uuid, match.getMatchId());
+        }
+
+        // Set cleanup callback
+        match.setEndCallback(m -> {
+            activeMatches.remove(m.getMatchId());
+            for (UUID uuid : m.getPlayers()) {
+                playerMatchMap.remove(uuid);
+            }
+        });
+
+        // Start countdown
+        match.startCountdown();
+
+        logger.info("チームランクマッチ #" + match.getMatchId() + " created: "
+                + team1.getName() + " vs " + team2.getName());
+    }
+
+    /**
+     * Get team queue size.
+     */
+    public int getTeamQueueSize() {
+        return teamQueue.size();
+    }
+
+    private boolean allMembersOnline(Team team) {
+        for (UUID uuid : team.getMembers()) {
+            if (!isOnline(uuid)) return false;
+        }
+        return true;
     }
 
     private boolean isOnline(UUID uuid) {

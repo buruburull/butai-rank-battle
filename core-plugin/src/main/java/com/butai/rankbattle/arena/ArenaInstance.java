@@ -572,7 +572,7 @@ public class ArenaInstance {
             }
 
             // Apply participation bonus only (ranked matches)
-            if (matchType == MatchType.SOLO_RANKED) {
+            if (matchType == MatchType.SOLO_RANKED || matchType == MatchType.TEAM_RANKED) {
                 applyDrawRP();
             }
         }
@@ -596,13 +596,30 @@ public class ArenaInstance {
         cancelTasks();
         etherManager.resetLeakCoefficient();
 
-        broadcast("§6§l==================");
-        broadcast("§a§l  ✦ チーム" + (winningTeamIndex + 1) + " の勝利！");
-        broadcast("§6§l==================");
-
         Set<UUID> winners = teamData.get(winningTeamIndex);
         int losingTeamIndex = winningTeamIndex == 0 ? 1 : 0;
         Set<UUID> losers = teamData.get(losingTeamIndex);
+
+        // Build winner/loser name lists
+        List<String> winnerNames = new ArrayList<>();
+        List<String> loserNames = new ArrayList<>();
+        if (winners != null) {
+            for (UUID uuid : winners) {
+                Player p = Bukkit.getPlayer(uuid);
+                winnerNames.add(p != null ? p.getName() : uuid.toString().substring(0, 8));
+            }
+        }
+        if (losers != null) {
+            for (UUID uuid : losers) {
+                Player p = Bukkit.getPlayer(uuid);
+                loserNames.add(p != null ? p.getName() : uuid.toString().substring(0, 8));
+            }
+        }
+
+        broadcast("§6§l==================");
+        broadcast("§a§l  ✦ 勝利チーム: §f" + String.join(", ", winnerNames));
+        broadcast("§c   敗北チーム: §7" + String.join(", ", loserNames));
+        broadcast("§6§l==================");
 
         if (winners != null) {
             for (UUID uuid : winners) {
@@ -617,12 +634,113 @@ public class ArenaInstance {
             }
         }
 
+        // Apply RP changes for team ranked
+        if (matchType == MatchType.TEAM_RANKED && winners != null && losers != null) {
+            applyTeamRPChanges(winners, losers);
+        }
+
         new BukkitRunnable() {
             @Override
             public void run() {
                 finishMatch();
             }
         }.runTaskLater(plugin, 100L);
+    }
+
+    /**
+     * Apply RP changes for a team match.
+     * Base: Elo calculation using team average RP
+     * Bonus: +5 per kill, +10 for surviving (not eliminated)
+     */
+    private void applyTeamRPChanges(Set<UUID> winners, Set<UUID> losers) {
+        RankManager rankManager = plugin.getRankManager();
+
+        // Calculate team average RP
+        int winnerTotalRP = 0, winnerCount = 0;
+        int loserTotalRP = 0, loserCount = 0;
+
+        for (UUID uuid : winners) {
+            WeaponType wt = playerWeaponTypes.get(uuid);
+            BRBPlayer data = rankManager.getPlayer(uuid);
+            if (wt != null && data != null) {
+                winnerTotalRP += data.getWeaponRP(wt).getRp();
+                winnerCount++;
+            }
+        }
+        for (UUID uuid : losers) {
+            WeaponType wt = playerWeaponTypes.get(uuid);
+            BRBPlayer data = rankManager.getPlayer(uuid);
+            if (wt != null && data != null) {
+                loserTotalRP += data.getWeaponRP(wt).getRp();
+                loserCount++;
+            }
+        }
+
+        int avgWinnerRP = winnerCount > 0 ? winnerTotalRP / winnerCount : 1000;
+        int avgLoserRP = loserCount > 0 ? loserTotalRP / loserCount : 1000;
+
+        // Base RP from Elo formula
+        int[] baseRP = rankManager.calculateRP(avgWinnerRP, avgLoserRP);
+        int baseWinGain = baseRP[0];
+        int baseLoseLoss = baseRP[1];
+
+        broadcast("§6§lRP変動:");
+
+        // Apply to winners
+        for (UUID uuid : winners) {
+            WeaponType wt = playerWeaponTypes.get(uuid);
+            BRBPlayer data = rankManager.getPlayer(uuid);
+            if (wt == null || data == null) continue;
+
+            int currentRP = data.getWeaponRP(wt).getRp();
+            int gain = baseWinGain;
+
+            // Survival bonus: +10 if not eliminated
+            if (!eliminated.contains(uuid)) gain += 10;
+            // Kill contribution bonus: based on damage dealt
+            double dmg = damageDealt.getOrDefault(uuid, 0.0);
+            if (dmg >= 20) gain += 5; // significant damage bonus
+
+            rankManager.applyMatchResult(uuid, wt, gain, true);
+
+            Player p = Bukkit.getPlayer(uuid);
+            String name = p != null ? p.getName() : "???";
+            String bonusInfo = "";
+            if (!eliminated.contains(uuid)) bonusInfo += " +生存";
+            if (dmg >= 20) bonusInfo += " +貢献";
+
+            broadcast("  §a" + name + " §f+" + gain + " RP"
+                    + " §8(" + wt.getColor() + wt.getDisplayName() + " §f" + (currentRP + gain) + "§8)"
+                    + (bonusInfo.isEmpty() ? "" : " §7[" + bonusInfo.trim() + "]"));
+
+            checkAndAnnounceRankChange(uuid, data);
+        }
+
+        // Apply to losers
+        for (UUID uuid : losers) {
+            WeaponType wt = playerWeaponTypes.get(uuid);
+            BRBPlayer data = rankManager.getPlayer(uuid);
+            if (wt == null || data == null) continue;
+
+            int currentRP = data.getWeaponRP(wt).getRp();
+            int loss = baseLoseLoss;
+
+            // Reduce loss if player contributed significantly
+            double dmg = damageDealt.getOrDefault(uuid, 0.0);
+            if (dmg >= 20) loss = Math.max(5, loss - 5);
+
+            rankManager.applyMatchResult(uuid, wt, -loss, false);
+
+            Player p = Bukkit.getPlayer(uuid);
+            String name = p != null ? p.getName() : "???";
+
+            broadcast("  §c" + name + " §f-" + loss + " RP"
+                    + " §8(" + wt.getColor() + wt.getDisplayName() + " §f" + Math.max(0, currentRP - loss) + "§8)");
+
+            checkAndAnnounceRankChange(uuid, data);
+        }
+
+        logger.info("Team match #" + matchId + " RP applied. Winners: +" + baseWinGain + " base, Losers: -" + baseLoseLoss + " base");
     }
 
     /**

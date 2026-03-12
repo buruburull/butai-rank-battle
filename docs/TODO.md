@@ -148,13 +148,13 @@
 - [x] pendingInvites管理
 - [x] DB永続化（teams, team_members）
 
-### 12. チームランクマッチ
-- [ ] チームキュー（/rank team）
-- [ ] ArenaInstance チーム戦コンストラクタ
-- [ ] isTeammate() によるフレンドリーファイア防止
-- [ ] チーム勝利条件: 相手チーム全員脱落
-- [ ] チーム戦RP計算（非対称Elo + キルボーナス + 生存ボーナス）
-- [ ] チーム戦ジャッジ（チーム合算スコア）
+### 12. チームランクマッチ（完了）
+- [x] チームキュー（/rank team）
+- [x] ArenaInstance チーム戦コンストラクタ（addTeams, teleportToSpawns）
+- [x] isTeammate() によるフレンドリーファイア防止
+- [x] チーム勝利条件: 相手チーム全員脱落
+- [x] チーム戦RP計算（非対称Elo + 生存ボーナス+10 + 貢献ボーナス+5）
+- [x] チーム戦ジャッジ（チーム合算スコア）
 
 ### 13. 切断処理
 - [ ] PlayerQuitEvent検知 → 即E-Shift（脱落）
