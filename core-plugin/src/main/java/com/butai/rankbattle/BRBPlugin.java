@@ -4,6 +4,7 @@ import com.butai.rankbattle.database.DatabaseManager;
 import com.butai.rankbattle.database.FrameSetDAO;
 import com.butai.rankbattle.database.PlayerDAO;
 import com.butai.rankbattle.command.FrameCommand;
+import com.butai.rankbattle.listener.CombatListener;
 import com.butai.rankbattle.listener.PlayerConnectionListener;
 import com.butai.rankbattle.manager.EtherManager;
 import com.butai.rankbattle.manager.FrameRegistry;
@@ -97,6 +98,8 @@ public class BRBPlugin extends JavaPlugin {
         // Register listeners (after commands, so frameCommand is available)
         getServer().getPluginManager().registerEvents(
                 new PlayerConnectionListener(this, rankManager, frameSetManager, frameCommand), this);
+        getServer().getPluginManager().registerEvents(
+                new CombatListener(etherManager, frameRegistry, log), this);
 
         log.info("BRB プラグインが正常に起動しました！");
     }

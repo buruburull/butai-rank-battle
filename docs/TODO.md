@@ -87,18 +87,19 @@
 - [x] 二重発動防止フラグ
 - [x] Tickループ（20tick=1秒ごと）
 
-### 7. 戦闘システム
-- [ ] CombatListener.java
-- [ ] 背面攻撃判定（角度定義: 120度）
-- [ ] 背面攻撃 1.5倍ダメージ
-- [ ] フレーム別ダメージ補正
-  - [ ] Crescent: 1.3倍
-  - [ ] Fang: 背面時さらに1.5倍（合計2.25倍）
-  - [ ] Bastion: シールドモード切替
-- [ ] GUNNER/MARKSMANエーテルコスト消費（射撃時）
-- [ ] Frost: Slowness II 3秒
-- [ ] 自然回復無効（試合中）
-- [ ] フレンドリーファイア防止（チーム戦）
+### 7. 戦闘システム（完了）
+- [x] CombatListener.java
+- [x] 背面攻撃判定（角度定義: 120度）
+- [x] 背面攻撃 1.5倍ダメージ
+- [x] フレーム別ダメージ補正
+  - [x] Crescent: 1.3倍（frames.ymlのdamageMultiplierで適用）
+  - [x] Fang: 背面時さらに1.5倍（合計2.25倍）
+  - [ ] Bastion: シールドモード切替（Phase2で実装予定）
+- [x] GUNNER/MARKSMANエーテルコスト消費（射撃時）
+- [x] Frost: Slowness II 3秒
+- [x] 自然回復無効（試合中）
+- [x] フレンドリーファイア防止（チーム戦）
+- [x] Cloak: 被ダメ60%カット
 
 ### 8. ソロランクマッチ
 - [ ] QueueManager.java（ソロキュー管理）

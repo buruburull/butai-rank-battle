@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 public class FrameCommand implements CommandExecutor, TabCompleter {
 
-    private static final NamespacedKey FRAME_KEY = new NamespacedKey(BRBPlugin.getInstance(), "frame_id");
+    public static final NamespacedKey FRAME_KEY = new NamespacedKey(BRBPlugin.getInstance(), "frame_id");
 
     private final FrameRegistry frameRegistry;
     private final FrameSetManager frameSetManager;
