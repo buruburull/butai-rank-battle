@@ -88,6 +88,24 @@ public class DisconnectTracker {
     }
 
     /**
+     * Get message to show on reconnect (penalty or warning).
+     * Returns penalty message if penalized, warning if 2+ disconnects, or null.
+     */
+    public String getReconnectMessage(UUID uuid) {
+        // Check active penalty first
+        String penalty = getPenaltyMessage(uuid);
+        if (penalty != null) return penalty;
+
+        // Check for warning (2+ disconnects but no active penalty)
+        int count = getDisconnectCount(uuid);
+        if (count >= 2) {
+            return "§e⚠ 切断警告: §7直近1時間で" + count + "回の切断が記録されています。§c3回目から参加禁止ペナルティが発生します。";
+        }
+
+        return null;
+    }
+
+    /**
      * Get disconnect count in the last hour.
      */
     public int getDisconnectCount(UUID uuid) {

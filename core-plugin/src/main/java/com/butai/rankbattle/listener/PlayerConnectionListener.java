@@ -44,12 +44,12 @@ public class PlayerConnectionListener implements Listener {
                     MessageUtil.sendInfo(player, "ランク: " + brbPlayer.getRankClass().getColoredName()
                             + " §8| §7総合RP: §f" + brbPlayer.getTotalRP());
 
-                    // Show disconnect penalty warning if applicable
+                    // Show disconnect penalty/warning if applicable
                     if (plugin.getQueueManager() != null) {
-                        String penalty = plugin.getQueueManager().getDisconnectTracker()
-                                .getPenaltyMessage(player.getUniqueId());
-                        if (penalty != null) {
-                            MessageUtil.sendError(player, penalty);
+                        String reconnectMsg = plugin.getQueueManager().getDisconnectTracker()
+                                .getReconnectMessage(player.getUniqueId());
+                        if (reconnectMsg != null) {
+                            MessageUtil.send(player, reconnectMsg);
                         }
                     }
                 }
