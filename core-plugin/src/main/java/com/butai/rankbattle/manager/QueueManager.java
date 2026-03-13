@@ -311,16 +311,10 @@ public class QueueManager {
             match.setSpawnLocations(s1, s2);
         }
 
-        // Set lobby location
-        Location lobby = plugin.getEtherManager() != null ? null : null;
-        // Use config lobby location
-        String lobbyWorld = plugin.getConfig().getString("lobby.world", "world");
-        World lw = Bukkit.getWorld(lobbyWorld);
-        if (lw != null) {
-            double lx = plugin.getConfig().getDouble("lobby.x", lw.getSpawnLocation().getX());
-            double ly = plugin.getConfig().getDouble("lobby.y", lw.getSpawnLocation().getY());
-            double lz = plugin.getConfig().getDouble("lobby.z", lw.getSpawnLocation().getZ());
-            match.setLobbyLocation(new Location(lw, lx, ly, lz));
+        // Set lobby location from EtherManager (loaded from frames.yml)
+        Location lobbyLoc2 = plugin.getEtherManager().getLobbyLocation();
+        if (lobbyLoc2 != null) {
+            match.setLobbyLocation(lobbyLoc2);
         }
 
         // Register match
@@ -429,14 +423,10 @@ public class QueueManager {
             match.setSpawnLocations(s1, s2);
         }
 
-        // Set lobby location
-        String lobbyWorld = plugin.getConfig().getString("lobby.world", "world");
-        World lw = Bukkit.getWorld(lobbyWorld);
-        if (lw != null) {
-            double lx = plugin.getConfig().getDouble("lobby.x", lw.getSpawnLocation().getX());
-            double ly = plugin.getConfig().getDouble("lobby.y", lw.getSpawnLocation().getY());
-            double lz = plugin.getConfig().getDouble("lobby.z", lw.getSpawnLocation().getZ());
-            match.setLobbyLocation(new Location(lw, lx, ly, lz));
+        // Set lobby location from EtherManager (loaded from frames.yml)
+        Location teamLobbyLoc = plugin.getEtherManager().getLobbyLocation();
+        if (teamLobbyLoc != null) {
+            match.setLobbyLocation(teamLobbyLoc);
         }
 
         // Register match

@@ -213,55 +213,55 @@ frames:
 # Lobby spawn location
 lobby:
   world: world
-  x: 0.0
-  y: 64.0
-  z: 0.0
-  yaw: 0.0
+  x: 50.50
+  y: 115.0
+  z: -49.50
+  yaw: 270.0
   pitch: 0.0
 
 # NPC settings (Villagers in lobby)
 npcs:
   rank_match:
     world: world
-    x: 5.0
-    y: 64.0
-    z: 0.0
-    yaw: 180.0
+    x: 63.50
+    y: 116.0
+    z: -38.50
+    yaw: 90.0
     name: "§6§lランクマッチ"
     subtitle: "§7右クリックで参加"
     command: "rank solo"
   practice:
     world: world
-    x: 3.0
-    y: 64.0
-    z: 0.0
-    yaw: 180.0
+    x: 65.50
+    y: 116.0
+    z: -43.50
+    yaw: 90.0
     name: "§a§lプラクティス"
     subtitle: "§7右クリックで参加"
     command: "rank practice"
   team_match:
     world: world
-    x: 1.0
-    y: 64.0
-    z: 0.0
-    yaw: 180.0
+    x: 66.50
+    y: 116.0
+    z: -49.50
+    yaw: 90.0
     name: "§d§lチームマッチ"
     subtitle: "§7右クリックで参加"
     command: "rank team"
   frameset:
     world: world
-    x: -1.0
-    y: 64.0
-    z: 0.0
+    x: 56.50
+    y: 115.0
+    z: -25.50
     yaw: 180.0
     name: "§b§lフレームセット"
     subtitle: "§7右クリックで確認"
     command: "frame view"
   stats:
     world: world
-    x: -3.0
-    y: 64.0
-    z: 0.0
+    x: 53.50
+    y: 115.0
+    z: -25.50
     yaw: 180.0
     name: "§e§l戦績"
     subtitle: "§7右クリックで表示"
@@ -271,20 +271,20 @@ npcs:
 holograms:
   welcome:
     world: world
-    x: 0.0
-    y: 67.0
-    z: -5.0
+    x: 52.0
+    y: 117.0
+    z: -52.0
     text: |
       §6§l═══════════════════
       §e§l  BUTAI RANK BATTLE
       §6§l═══════════════════
-      §7  フレームを装備して戦え！
+      §7  NPCを右クリックして参加しよう
   ranking:
     world: world
-    x: 0.0
-    y: 67.0
-    z: 5.0
-    update_interval: 1200
+    x: 62.50
+    y: 118.0
+    z: -35.50
+    update_interval: 600
 
 # Action bar settings
 actionbar:

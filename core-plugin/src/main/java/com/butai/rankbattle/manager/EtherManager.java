@@ -71,6 +71,10 @@ public class EtherManager {
         this.lobbyLocation = location;
     }
 
+    public Location getLobbyLocation() {
+        return lobbyLocation;
+    }
+
     /**
      * Set the callback for E-Shift events.
      */
