@@ -197,13 +197,13 @@
 - [x] シーズン終了: スナップショット保存 → 全RP1000リセット
 - [x] season_snapshotsテーブル永続化
 
-### 18. 管理者コマンド（部分完了）
+### 18. 管理者コマンド（完了）
 - [x] /bradmin frame reload（frames.yml再読み込み）
 - [x] /bradmin forcestart（スタブ実装）
 - [x] /bradmin rp set <player> <weapon> <value>
 - [x] /bradmin rp info <player>
-- [ ] /bradmin map list
-- [ ] /bradmin map info <name>
+- [x] /bradmin map list
+- [x] /bradmin map info <name>
 - [x] 権限: brb.admin
 
 ### 19. UI/HUD

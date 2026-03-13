@@ -4,6 +4,7 @@ import com.butai.rankbattle.database.SeasonDAO;
 import com.butai.rankbattle.manager.FrameRegistry;
 import com.butai.rankbattle.manager.QueueManager;
 import com.butai.rankbattle.manager.RankManager;
+import com.butai.rankbattle.model.ArenaMap;
 import com.butai.rankbattle.model.BRBPlayer;
 import com.butai.rankbattle.model.WeaponType;
 import com.butai.rankbattle.util.MessageUtil;
@@ -58,6 +59,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
             case "forcestart" -> handleForceStart(sender);
             case "rp" -> handleRP(sender, args);
             case "season" -> handleSeason(sender, args);
+            case "map" -> handleMap(sender, args);
             default -> {
                 sendUsage(sender);
                 yield true;
@@ -295,6 +297,74 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleMap(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage("§e使用法:");
+            sender.sendMessage("  §f/bradmin map list §7- マップ一覧");
+            sender.sendMessage("  §f/bradmin map info <name> §7- マップ詳細");
+            return true;
+        }
+
+        String mapSub = args[1].toLowerCase();
+        return switch (mapSub) {
+            case "list" -> handleMapList(sender);
+            case "info" -> handleMapInfo(sender, args);
+            default -> {
+                sender.sendMessage("§e使用法: /bradmin map list | info <name>");
+                yield true;
+            }
+        };
+    }
+
+    private boolean handleMapList(CommandSender sender) {
+        var maps = frameRegistry.getAllArenaMaps();
+        if (maps.isEmpty()) {
+            sender.sendMessage("§7登録されたマップはありません。");
+            return true;
+        }
+
+        sender.sendMessage("§6§l===== アリーナマップ一覧 =====");
+        for (ArenaMap map : maps) {
+            sender.sendMessage("  §e" + map.getId() + " §7- §f" + map.getName()
+                    + " §7(ワールド: " + map.getWorldName() + ", 半径: " + map.getBorderRadius() + ")");
+        }
+        sender.sendMessage("§7合計: §f" + maps.size() + " §7マップ");
+        sender.sendMessage("§6§l============================");
+        return true;
+    }
+
+    private boolean handleMapInfo(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage("§e使用法: /bradmin map info <name>");
+            return true;
+        }
+
+        String mapId = args[2].toLowerCase();
+        ArenaMap map = frameRegistry.getArenaMap(mapId);
+        if (map == null) {
+            sender.sendMessage("§cマップ '" + args[2] + "' が見つかりません。");
+            sender.sendMessage("§7/bradmin map list で一覧を確認してください。");
+            return true;
+        }
+
+        sender.sendMessage("§6§l===== マップ詳細: " + map.getName() + " =====");
+        sender.sendMessage("§7ID: §f" + map.getId());
+        sender.sendMessage("§7ワールド: §f" + map.getWorldName());
+        sender.sendMessage("§7スポーン1: §f" + formatCoord(map.getSpawn1X(), map.getSpawn1Y(), map.getSpawn1Z()));
+        sender.sendMessage("§7スポーン2: §f" + formatCoord(map.getSpawn2X(), map.getSpawn2Y(), map.getSpawn2Z()));
+        sender.sendMessage("§7観戦地点: §f" + formatCoord(map.getSpectateX(), map.getSpectateY(), map.getSpectateZ()));
+        sender.sendMessage("§7境界半径: §f" + map.getBorderRadius() + " §7ブロック");
+        if (!map.getDescription().isEmpty()) {
+            sender.sendMessage("§7説明: §f" + map.getDescription());
+        }
+        sender.sendMessage("§6§l================================");
+        return true;
+    }
+
+    private String formatCoord(double x, double y, double z) {
+        return String.format("%.1f, %.1f, %.1f", x, y, z);
+    }
+
     private void sendUsage(CommandSender sender) {
         sender.sendMessage("§6/bradmin コマンド一覧:");
         sender.sendMessage("  §e/bradmin frame reload §7- frames.yml再読み込み");
@@ -303,6 +373,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("  §e/bradmin rp info <player> §7- RP情報表示");
         sender.sendMessage("  §e/bradmin season start <name> §7- シーズン開始");
         sender.sendMessage("  §e/bradmin season end §7- シーズン終了");
+        sender.sendMessage("  §e/bradmin map list §7- マップ一覧");
+        sender.sendMessage("  §e/bradmin map info <name> §7- マップ詳細");
     }
 
     @Override
@@ -312,13 +384,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("brb.admin")) return completions;
 
         if (args.length == 1) {
-            completions.addAll(List.of("frame", "forcestart", "rp", "season"));
+            completions.addAll(List.of("frame", "forcestart", "rp", "season", "map"));
         } else if (args.length == 2) {
             String sub = args[0].toLowerCase();
             switch (sub) {
                 case "frame" -> completions.add("reload");
                 case "rp" -> completions.addAll(List.of("set", "info"));
                 case "season" -> completions.addAll(List.of("start", "end"));
+                case "map" -> completions.addAll(List.of("list", "info"));
             }
         } else if (args.length == 3) {
             String sub = args[0].toLowerCase();
@@ -327,6 +400,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     completions.add(p.getName());
                 }
+            } else if ("map".equals(sub) && "info".equals(args[1].toLowerCase())) {
+                completions.addAll(frameRegistry.getArenaMapIds());
             }
         } else if (args.length == 4) {
             String sub = args[0].toLowerCase();

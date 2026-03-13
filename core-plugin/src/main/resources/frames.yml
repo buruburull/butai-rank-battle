@@ -291,3 +291,25 @@ actionbar:
   enabled: true
   update_interval: 40
   format: "§6ランク: {rank} §8| §bRP: §f{rp} §8| §7{status}"
+
+# ========== ARENA MAP SETTINGS ==========
+
+# Arena maps for matches
+maps:
+  default:
+    name: "デフォルトアリーナ"
+    world: world
+    spawn1:
+      x: 15.0
+      y: 64.0
+      z: 0.0
+    spawn2:
+      x: -15.0
+      y: 64.0
+      z: 0.0
+    spectate:
+      x: 0.0
+      y: 70.0
+      z: 0.0
+    border_radius: 50
+    description: "標準的なアリーナ。バランスの取れた地形。"

@@ -1,5 +1,6 @@
 package com.butai.rankbattle.manager;
 
+import com.butai.rankbattle.model.ArenaMap;
 import com.butai.rankbattle.model.FrameCategory;
 import com.butai.rankbattle.model.FrameData;
 import org.bukkit.configuration.ConfigurationSection;
@@ -14,6 +15,7 @@ public class FrameRegistry {
 
     private final Logger logger;
     private final Map<String, FrameData> frames = new LinkedHashMap<>();
+    private final Map<String, ArenaMap> arenaMaps = new LinkedHashMap<>();
 
     public FrameRegistry(Logger logger) {
         this.logger = logger;
@@ -62,6 +64,49 @@ public class FrameRegistry {
         }
 
         logger.info("Loaded " + frames.size() + " frames from frames.yml");
+
+        // Load arena maps
+        loadMaps(config);
+    }
+
+    /**
+     * Load arena maps from the 'maps' section of frames.yml.
+     */
+    private void loadMaps(YamlConfiguration config) {
+        arenaMaps.clear();
+
+        ConfigurationSection mapsSection = config.getConfigurationSection("maps");
+        if (mapsSection == null) {
+            logger.info("No 'maps' section found in frames.yml");
+            return;
+        }
+
+        for (String id : mapsSection.getKeys(false)) {
+            ConfigurationSection sec = mapsSection.getConfigurationSection(id);
+            if (sec == null) continue;
+
+            String name = sec.getString("name", id);
+            String worldName = sec.getString("world", "world");
+
+            double s1x = sec.getDouble("spawn1.x", 15.0);
+            double s1y = sec.getDouble("spawn1.y", 64.0);
+            double s1z = sec.getDouble("spawn1.z", 0.0);
+            double s2x = sec.getDouble("spawn2.x", -15.0);
+            double s2y = sec.getDouble("spawn2.y", 64.0);
+            double s2z = sec.getDouble("spawn2.z", 0.0);
+            double spX = sec.getDouble("spectate.x", 0.0);
+            double spY = sec.getDouble("spectate.y", 70.0);
+            double spZ = sec.getDouble("spectate.z", 0.0);
+            int borderRadius = sec.getInt("border_radius", 50);
+            String description = sec.getString("description", "");
+
+            ArenaMap map = new ArenaMap(id, name, worldName,
+                    s1x, s1y, s1z, s2x, s2y, s2z,
+                    spX, spY, spZ, borderRadius, description);
+            arenaMaps.put(id, map);
+        }
+
+        logger.info("Loaded " + arenaMaps.size() + " arena maps from frames.yml");
     }
 
     /**
@@ -106,5 +151,35 @@ public class FrameRegistry {
      */
     public int size() {
         return frames.size();
+    }
+
+    // ==================== Arena Map Methods ====================
+
+    /**
+     * Get arena map by ID.
+     */
+    public ArenaMap getArenaMap(String id) {
+        return arenaMaps.get(id.toLowerCase());
+    }
+
+    /**
+     * Get all arena maps.
+     */
+    public Collection<ArenaMap> getAllArenaMaps() {
+        return Collections.unmodifiableCollection(arenaMaps.values());
+    }
+
+    /**
+     * Get all arena map IDs.
+     */
+    public Set<String> getArenaMapIds() {
+        return Collections.unmodifiableSet(arenaMaps.keySet());
+    }
+
+    /**
+     * Get arena map count.
+     */
+    public int getArenaMapCount() {
+        return arenaMaps.size();
     }
 }
