@@ -13,6 +13,7 @@ import com.butai.rankbattle.command.TeamCommand;
 import com.butai.rankbattle.listener.ChatTabListener;
 import com.butai.rankbattle.listener.CombatListener;
 import com.butai.rankbattle.listener.BlockChangeListener;
+import com.butai.rankbattle.listener.FrameEffectListener;
 import com.butai.rankbattle.listener.LobbyListener;
 import com.butai.rankbattle.listener.PlayerConnectionListener;
 import com.butai.rankbattle.manager.EtherManager;
@@ -48,6 +49,7 @@ public class BRBPlugin extends JavaPlugin {
     private LobbyManager lobbyManager;
     private MatchHistoryDAO matchHistoryDAO;
     private FrameCommand frameCommand;
+    private FrameEffectListener frameEffectListener;
     private ChatTabListener chatTabListener;
 
     public static BRBPlugin getInstance() {
@@ -153,8 +155,11 @@ public class BRBPlugin extends JavaPlugin {
         // Register listeners (after commands, so frameCommand is available)
         getServer().getPluginManager().registerEvents(
                 new PlayerConnectionListener(this, rankManager, frameSetManager, frameCommand), this);
-        getServer().getPluginManager().registerEvents(
-                new CombatListener(etherManager, frameRegistry, queueManager, log), this);
+        CombatListener combatListener = new CombatListener(etherManager, frameRegistry, queueManager, log);
+        frameEffectListener = new FrameEffectListener(etherManager, frameRegistry, queueManager, log);
+        combatListener.setFrameEffectListener(frameEffectListener);
+        getServer().getPluginManager().registerEvents(combatListener, this);
+        getServer().getPluginManager().registerEvents(frameEffectListener, this);
         getServer().getPluginManager().registerEvents(new LobbyListener(), this);
         getServer().getPluginManager().registerEvents(new BlockChangeListener(queueManager), this);
         chatTabListener = new ChatTabListener(rankManager);
@@ -228,6 +233,10 @@ public class BRBPlugin extends JavaPlugin {
 
     public FrameCommand getFrameCommand() {
         return frameCommand;
+    }
+
+    public FrameEffectListener getFrameEffectListener() {
+        return frameEffectListener;
     }
 
     public ChatTabListener getChatTabListener() {
