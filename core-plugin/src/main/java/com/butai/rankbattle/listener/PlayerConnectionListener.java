@@ -71,6 +71,11 @@ public class PlayerConnectionListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 
+        // Handle spectator disconnect
+        if (plugin.getQueueManager() != null) {
+            plugin.getQueueManager().handleSpectatorDisconnect(player.getUniqueId());
+        }
+
         // Handle match disconnect (queue removal + E-Shift in match + penalty tracking)
         if (plugin.getQueueManager() != null) {
             String penaltyMsg = plugin.getQueueManager().handleDisconnect(player.getUniqueId());

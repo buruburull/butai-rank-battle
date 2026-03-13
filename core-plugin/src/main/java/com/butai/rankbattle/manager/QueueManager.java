@@ -37,6 +37,8 @@ public class QueueManager {
     private final Map<Integer, ArenaInstance> activeMatches = new HashMap<>();
     // Player -> matchId mapping
     private final Map<UUID, Integer> playerMatchMap = new HashMap<>();
+    // Spectator -> matchId mapping
+    private final Map<UUID, Integer> spectatorMatchMap = new HashMap<>();
 
     // Queue checker task
     private BukkitTask queueCheckerTask;
@@ -332,6 +334,9 @@ public class QueueManager {
             for (UUID uuid : m.getPlayers()) {
                 playerMatchMap.remove(uuid);
             }
+            for (UUID uuid : m.getSpectators()) {
+                spectatorMatchMap.remove(uuid);
+            }
         });
 
         // Start countdown
@@ -446,6 +451,9 @@ public class QueueManager {
             for (UUID uuid : m.getPlayers()) {
                 playerMatchMap.remove(uuid);
             }
+            for (UUID uuid : m.getSpectators()) {
+                spectatorMatchMap.remove(uuid);
+            }
         });
 
         // Start countdown
@@ -460,6 +468,94 @@ public class QueueManager {
      */
     public int getTeamQueueSize() {
         return teamQueue.size();
+    }
+
+    /**
+     * Add a player as spectator to a match.
+     * Returns null on success, or an error message.
+     */
+    public String joinSpectate(UUID uuid, Integer matchId) {
+        if (isInQueue(uuid)) {
+            return "キュー待機中は観戦できません。";
+        }
+        if (isInMatch(uuid)) {
+            return "試合中は観戦できません。";
+        }
+        if (isSpectating(uuid)) {
+            return "既に観戦中です。/rank spectate leave で退出してください。";
+        }
+
+        ArenaInstance match;
+        if (matchId != null) {
+            match = activeMatches.get(matchId);
+            if (match == null) {
+                return "マッチ #" + matchId + " が見つかりません。";
+            }
+        } else {
+            // Auto-select: find any active match
+            match = activeMatches.values().stream()
+                    .filter(m -> m.getState() == ArenaInstance.MatchState.ACTIVE
+                            || m.getState() == ArenaInstance.MatchState.SUDDEN_DEATH
+                            || m.getState() == ArenaInstance.MatchState.COUNTDOWN)
+                    .findFirst().orElse(null);
+            if (match == null) {
+                return "現在アクティブなマッチがありません。";
+            }
+        }
+
+        ArenaInstance.MatchState st = match.getState();
+        if (st == ArenaInstance.MatchState.ENDING || st == ArenaInstance.MatchState.FINISHED) {
+            return "そのマッチは終了しています。";
+        }
+
+        match.addSpectator(uuid);
+        spectatorMatchMap.put(uuid, match.getMatchId());
+        return null;
+    }
+
+    /**
+     * Remove a player from spectating.
+     * Returns true if the player was spectating.
+     */
+    public boolean leaveSpectate(UUID uuid) {
+        Integer matchId = spectatorMatchMap.remove(uuid);
+        if (matchId == null) return false;
+
+        ArenaInstance match = activeMatches.get(matchId);
+        if (match != null) {
+            match.removeSpectator(uuid);
+        }
+        return true;
+    }
+
+    /**
+     * Check if a player is spectating a match.
+     */
+    public boolean isSpectating(UUID uuid) {
+        return spectatorMatchMap.containsKey(uuid);
+    }
+
+    /**
+     * Handle spectator disconnect.
+     */
+    public void handleSpectatorDisconnect(UUID uuid) {
+        leaveSpectate(uuid);
+    }
+
+    /**
+     * Get the match a spectator is watching, or null.
+     */
+    public ArenaInstance getSpectatorMatch(UUID uuid) {
+        Integer matchId = spectatorMatchMap.get(uuid);
+        if (matchId == null) return null;
+        return activeMatches.get(matchId);
+    }
+
+    /**
+     * Get all active matches (for listing available matches to spectate).
+     */
+    public Map<Integer, ArenaInstance> getActiveMatches() {
+        return Collections.unmodifiableMap(activeMatches);
     }
 
     private boolean allMembersOnline(Team team) {

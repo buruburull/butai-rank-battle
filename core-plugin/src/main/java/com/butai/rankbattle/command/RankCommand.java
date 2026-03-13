@@ -1,5 +1,7 @@
 package com.butai.rankbattle.command;
 
+import com.butai.rankbattle.BRBPlugin;
+import com.butai.rankbattle.arena.ArenaInstance;
 import com.butai.rankbattle.manager.QueueManager;
 import com.butai.rankbattle.manager.RankManager;
 import com.butai.rankbattle.model.BRBPlayer;
@@ -9,6 +11,7 @@ import com.butai.rankbattle.model.WeaponRP;
 import com.butai.rankbattle.model.WeaponType;
 import com.butai.rankbattle.util.MessageUtil;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -55,6 +58,7 @@ public class RankCommand implements CommandExecutor, TabCompleter {
             case "status" -> handleStatus(player);
             case "stats" -> handleStats(player, args);
             case "top" -> handleTop(player, args);
+            case "spectate" -> handleSpectate(player, args);
             default -> {
                 sendUsage(player);
                 yield true;
@@ -224,6 +228,55 @@ public class RankCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    /**
+     * /rank spectate [matchId] - Start spectating a match
+     * /rank spectate leave - Stop spectating
+     */
+    private boolean handleSpectate(Player player, String[] args) {
+        if (args.length >= 2 && args[1].equalsIgnoreCase("leave")) {
+            // Leave spectating
+            boolean wasSpectating = queueManager.leaveSpectate(player.getUniqueId());
+            if (wasSpectating) {
+                // Return to lobby
+                BRBPlugin plugin = BRBPlugin.getInstance();
+                if (plugin.getLobbyManager() != null) {
+                    plugin.getLobbyManager().sendToLobby(player);
+                } else {
+                    player.setGameMode(GameMode.ADVENTURE);
+                    player.teleport(player.getWorld().getSpawnLocation());
+                }
+                plugin.getFrameCommand().refreshHotbar(player);
+                MessageUtil.sendSuccess(player, "観戦を終了しました。");
+            } else {
+                MessageUtil.sendInfo(player, "観戦していません。");
+            }
+            return true;
+        }
+
+        // Join spectating
+        Integer matchId = null;
+        if (args.length >= 2) {
+            try {
+                matchId = Integer.parseInt(args[1]);
+            } catch (NumberFormatException e) {
+                MessageUtil.sendError(player, "無効なマッチIDです。 使用法: /rank spectate [matchId]");
+                return true;
+            }
+        }
+
+        String error = queueManager.joinSpectate(player.getUniqueId(), matchId);
+        if (error != null) {
+            MessageUtil.sendError(player, error);
+            return true;
+        }
+
+        ArenaInstance match = queueManager.getSpectatorMatch(player.getUniqueId());
+        int id = match != null ? match.getMatchId() : 0;
+        MessageUtil.sendSuccess(player, "マッチ #" + id + " を観戦中です。");
+        MessageUtil.sendInfo(player, "観戦終了: §e/rank spectate leave");
+        return true;
+    }
+
     private void showOverallTop(Player player) {
         List<Map<String, Object>> top = rankManager.getTopPlayers(10);
         MessageUtil.send(player, "§6§l===== 総合ランキング TOP10 =====");
@@ -294,17 +347,24 @@ public class RankCommand implements CommandExecutor, TabCompleter {
         player.sendMessage("  §e/rank status §7- 現在のステータス");
         player.sendMessage("  §e/rank stats [player] §7- 戦績を表示");
         player.sendMessage("  §e/rank top [weapon] §7- ランキングTOP10");
+        player.sendMessage("  §e/rank spectate [matchId] §7- 試合を観戦");
+        player.sendMessage("  §e/rank spectate leave §7- 観戦終了");
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
-            completions.addAll(List.of("solo", "team", "practice", "cancel", "status", "stats", "top"));
+            completions.addAll(List.of("solo", "team", "practice", "cancel", "status", "stats", "top", "spectate"));
         } else if (args.length == 2) {
             String sub = args[0].toLowerCase();
             if ("top".equals(sub)) {
                 completions.addAll(List.of("striker", "gunner", "marksman"));
+            } else if ("spectate".equals(sub)) {
+                completions.add("leave");
+                for (Integer id : queueManager.getActiveMatches().keySet()) {
+                    completions.add(String.valueOf(id));
+                }
             } else if ("stats".equals(sub)) {
                 // Online player names
                 for (Player p : Bukkit.getOnlinePlayers()) {

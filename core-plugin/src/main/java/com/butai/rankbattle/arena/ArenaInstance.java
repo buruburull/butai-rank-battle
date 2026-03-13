@@ -53,6 +53,8 @@ public class ArenaInstance {
     private final Map<Integer, Set<UUID>> teamData = new HashMap<>();
     // Players who have been eliminated (E-Shift or death)
     private final Set<UUID> eliminated = new HashSet<>();
+    // Spectators watching this match (not participants)
+    private final Set<UUID> spectators = new HashSet<>();
     // Damage tracking for judge scoring
     private final Map<UUID, Double> damageDealt = new HashMap<>();
     // Weapon type per player (determined at match start from slot 1)
@@ -862,6 +864,21 @@ public class ArenaInstance {
             }
         }
 
+        // Return spectators to lobby
+        for (UUID uuid : spectators) {
+            Player sp = Bukkit.getPlayer(uuid);
+            if (sp != null && sp.isOnline()) {
+                if (lobbyLocation != null) {
+                    sp.teleport(lobbyLocation);
+                } else {
+                    sp.teleport(sp.getWorld().getSpawnLocation());
+                }
+                sp.setGameMode(GameMode.ADVENTURE);
+                if (fc != null) fc.refreshHotbar(sp);
+            }
+        }
+        spectators.clear();
+
         // Stop ether tick if no more active matches
         if (!etherManager.hasActivePlayers()) {
             etherManager.stopTickLoop();
@@ -927,10 +944,16 @@ public class ArenaInstance {
     }
 
     /**
-     * Send a message to all players in this match.
+     * Send a message to all players and spectators in this match.
      */
     public void broadcast(String message) {
         for (UUID uuid : players) {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null && p.isOnline()) {
+                MessageUtil.send(p, message);
+            }
+        }
+        for (UUID uuid : spectators) {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null && p.isOnline()) {
                 MessageUtil.send(p, message);
@@ -976,6 +999,51 @@ public class ArenaInstance {
     public Location getSpectatorLocation() {
         if (spawn1 == null || spawn2 == null) return null;
         return spawn1.clone().add(spawn2).multiply(0.5).add(0, 10, 0);
+    }
+
+    /**
+     * Add a spectator to this match.
+     */
+    public void addSpectator(UUID uuid) {
+        spectators.add(uuid);
+        Player p = Bukkit.getPlayer(uuid);
+        if (p != null) {
+            p.setGameMode(GameMode.SPECTATOR);
+            Location specLoc = getSpectatorLocation();
+            if (specLoc != null) {
+                p.teleport(specLoc);
+            }
+            if (bossBar != null) {
+                bossBar.addPlayer(p);
+            }
+        }
+    }
+
+    /**
+     * Remove a spectator from this match.
+     */
+    public void removeSpectator(UUID uuid) {
+        spectators.remove(uuid);
+        Player p = Bukkit.getPlayer(uuid);
+        if (p != null) {
+            if (bossBar != null) {
+                bossBar.removePlayer(p);
+            }
+        }
+    }
+
+    /**
+     * Check if a player is spectating this match.
+     */
+    public boolean hasSpectator(UUID uuid) {
+        return spectators.contains(uuid);
+    }
+
+    /**
+     * Get all spectators.
+     */
+    public Set<UUID> getSpectators() {
+        return Collections.unmodifiableSet(spectators);
     }
 
     /**
