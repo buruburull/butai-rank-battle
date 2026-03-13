@@ -17,7 +17,13 @@
 
 ## Project Overview
 
-BUTAI Rank Battle (BRB) is a competitive Minecraft PvP plugin featuring a frame-based combat system inspired by the anime "World Trigger". Players equip different frames (special abilities) to customize their playstyle and compete in ranked matches. The system tracks performance across weapons and maintains season-based rankings.
+BUTAI Rank Battle (BRB) は「ワールドトリガー」にインスパイアされたフレームベースの競技型Minecraft PvPプラグインです。プレイヤーは「フレーム」（特殊兵装）を装備し、「エーテル」（戦闘エネルギー）を管理しながらランクマッチで対戦します。
+
+### 用語（旧名称→新名称）
+- トリガー → **フレーム (Frame)**: 装備する特殊兵装
+- トリオン → **エーテル (Ether)**: 戦闘用エネルギー
+- ベイルアウト → **エマージェンシーシフト (E-Shift)**: エーテル枯渇時の緊急離脱
+- ロードアウト → **フレームセット (FrameSet)**: フレーム装備構成（8スロット）
 
 ## Technology Stack
 
@@ -25,7 +31,6 @@ BUTAI Rank Battle (BRB) is a competitive Minecraft PvP plugin featuring a frame-
 - **Language**: Java 21
 - **Build System**: Gradle 8.5 with Kotlin DSL + Shadow plugin
 - **Database**: MySQL 8.0 with HikariCP connection pooling (allowPublicKeyRetrieval=true required)
-- **Testing**: JUnit 5, Mockito
 - **GitHub**: https://github.com/buruburull/border-rank-battle.git
 
 ## Infrastructure (GCP)
@@ -41,7 +46,7 @@ BUTAI Rank Battle (BRB) is a competitive Minecraft PvP plugin featuring a frame-
 - **Plugin data folder**: `plugins/BUTAIRankBattle/`
 
 ### 重要: ~/minecraft-server/ は使用しない
-Pterodactylパネルが Docker コンテナ内でサーバーを実行するため、`~/minecraft-server/` ディレクトリは実際のサーバーではない。プラグインJARやデータフォルダは上記Pterodactyl volumes内に配置する。
+Pterodactylパネルが Docker コンテナ内でサーバーを実行するため、`~/minecraft-server/` ディレクトリは実際のサーバーではない。
 
 ## Build & Deploy
 
@@ -65,18 +70,113 @@ sudo cp ~/butai-rank-battle/core-plugin/build/libs/BUTAIRankBattle-0.1.0-SNAPSHO
 sudo rm /var/lib/pterodactyl/volumes/c1691fe5-4896-4dde-a0b0-a4e7d492f358/plugins/BUTAIRankBattle/frames.yml
 ```
 
+## Project Structure
+
+```
+butai-rank-battle/
+├── common/src/main/java/com/butai/rankbattle/
+│   ├── database/          # DAO classes
+│   │   ├── DatabaseManager.java   # HikariCP connection pool
+│   │   ├── PlayerDAO.java         # Player CRUD
+│   │   ├── FrameSetDAO.java       # FrameSet persistence
+│   │   ├── TeamDAO.java           # Team persistence
+│   │   └── SeasonDAO.java         # Season/snapshot management
+│   ├── model/             # Data models
+│   │   ├── BRBPlayer.java         # Player data (UUID, rank, RP)
+│   │   ├── FrameData.java         # Frame definition (damage, cost, etc.)
+│   │   ├── FrameCategory.java     # STRIKER/GUNNER/MARKSMAN/SUPPORT
+│   │   ├── WeaponRP.java          # Per-weapon RP stats
+│   │   ├── WeaponType.java        # STRIKER/GUNNER/MARKSMAN
+│   │   ├── RankClass.java         # S/A/B/C/UNRANKED
+│   │   ├── Team.java              # Team data
+│   │   └── ArenaMap.java          # Arena map definition
+│   └── util/
+│       └── MessageUtil.java       # Japanese message utility
+│
+├── core-plugin/src/main/java/com/butai/rankbattle/
+│   ├── BRBPlugin.java             # Main plugin class
+│   ├── command/
+│   │   ├── FrameCommand.java      # /frame (set/view/remove/list/preset)
+│   │   ├── RankCommand.java       # /rank (solo/team/practice/cancel/stats/top/spectate)
+│   │   ├── TeamCommand.java       # /team (create/invite/accept/deny/leave/info)
+│   │   └── AdminCommand.java      # /bradmin (frame/forcestart/rp/season/map)
+│   ├── listener/
+│   │   ├── CombatListener.java    # Damage, backstab, frame effects, ether cost
+│   │   ├── PlayerConnectionListener.java  # Join/quit, data load/save
+│   │   ├── LobbyListener.java     # NPC interaction
+│   │   ├── ChatTabListener.java   # Rank prefix in chat/tab
+│   │   └── BlockChangeListener.java # Block tracking for map restoration
+│   ├── manager/
+│   │   ├── RankManager.java       # Player cache, rank/RP calculation, team management
+│   │   ├── QueueManager.java      # Solo/team/practice queues, matchmaking
+│   │   ├── FrameRegistry.java     # Frame definitions from frames.yml, arena maps
+│   │   ├── FrameSetManager.java   # Player frameset (8 slots), presets
+│   │   ├── EtherManager.java      # Ether (1000 max), leak, E-Shift
+│   │   ├── LobbyManager.java      # NPCs, holograms, action bar
+│   │   └── DisconnectTracker.java # Disconnect penalty tracking
+│   └── arena/
+│       └── ArenaInstance.java     # Match lifecycle, judge, sudden death, block restore
+│
+├── core-plugin/src/main/resources/
+│   ├── plugin.yml          # Plugin registration
+│   ├── config.yml          # DB connection only
+│   └── frames.yml          # All game settings (frames, lobby, NPC, hologram, maps)
+│
+└── docs/
+    ├── game-spec.md        # Game specification
+    ├── TODO.md             # Implementation progress
+    └── schema.sql          # Database schema
+```
+
 ## Configuration Files
 
 - **config.yml**: データベース接続設定のみ（host, port, name, username, password）
 - **frames.yml**: ゲーム関連の全設定
-  - フレーム定義（16種: striker, gunner, marksman, support）
+  - フレーム定義（18種: striker 3, gunner 4, marksman 3, support 8）
   - ロビー設定（spawn location）
-  - NPC設定（Villager NPCs with PDC tags）
-  - ホログラム設定（TextDisplay: welcome banner + ranking TOP10）
-  - アクションバー設定（ランク・RP・ステータス表示）
+  - NPC設定（Villager NPCs with PDC tags: 5体）
+  - ホログラム設定（TextDisplay: welcome banner + ranking TOP10, 60秒更新）
+  - アクションバー設定（ランク・RP・ステータス表示, 2秒更新）
+  - アリーナマップ設定（スポーン座標、境界半径）
 
 ### 注意: saveDefaultConfig() / saveResource()
 `saveDefaultConfig()` と `saveResource(name, false)` は既存ファイルを上書きしない。新しい設定項目を追加した場合、サーバー上の古いファイルを削除してから再起動する必要がある。
+
+## Command System
+
+### Player Commands
+| コマンド | 説明 |
+|---|---|
+| `/frame set <slot> <name>` | フレーム装備 |
+| `/frame view` | フレームセット確認 |
+| `/frame remove <slot>` | フレーム解除 |
+| `/frame list [category]` | フレーム一覧 |
+| `/frame preset save/load/list/delete <name>` | プリセット管理 |
+| `/rank solo` | ソロランクマッチにキュー |
+| `/rank team` | チームランクマッチにキュー |
+| `/rank practice` | プラクティスにキュー |
+| `/rank cancel` | キューキャンセル |
+| `/rank stats [player]` | 戦績表示 |
+| `/rank top [weapon]` | ランキングTOP10 |
+| `/rank spectate [matchId]` | 試合観戦 |
+| `/rank spectate leave` | 観戦終了 |
+| `/team create <name>` | チーム作成（Bランク以上） |
+| `/team invite <player>` | メンバー招待 |
+| `/team accept / deny` | 招待応答 |
+| `/team leave` | チーム脱退 |
+| `/team info [name]` | チーム情報 |
+
+### Admin Commands (permission: brb.admin)
+| コマンド | 説明 |
+|---|---|
+| `/bradmin frame reload` | フレーム設定リロード |
+| `/bradmin forcestart` | 強制マッチ開始 |
+| `/bradmin rp set <player> <weapon> <value>` | RP手動設定 |
+| `/bradmin rp info <player>` | RP情報表示 |
+| `/bradmin season start <name>` | シーズン開始 |
+| `/bradmin season end` | シーズン終了 |
+| `/bradmin map list` | マップ一覧 |
+| `/bradmin map info <name>` | マップ詳細 |
 
 ## Package & Naming
 
@@ -92,8 +192,9 @@ sudo rm /var/lib/pterodactyl/volumes/c1691fe5-4896-4dde-a0b0-a4e7d492f358/plugin
 ### Critical
 - **Never use auto-respawn** (`player.spigot().respawn()`): Causes frozen state where player appears stuck to others
 - **Never use spectator mode** for match participants: Conflicts with Minecraft respawn flow
-- **Ether bailout must NOT kill player**: Must teleport directly to hub and call `match.onKill(null, uuid)` to end match
+- **E-Shift must NOT kill player**: Must teleport directly to lobby (not death). Call `match.onPlayerEliminated(uuid)` for match processing
 - **Server memory**: e2-medium needs -Xmx3G. Reducing to 2G causes connection timeouts
+- **エーテル操作は必ずEtherManager経由**: 直接減算禁止
 
 ### Deployment
 - サーバーはPterodactylパネルから再起動する（screenは使用しない）
@@ -111,9 +212,20 @@ sudo rm /var/lib/pterodactyl/volumes/c1691fe5-4896-4dde-a0b0-a4e7d492f358/plugin
 
 ## Database Schema Summary
 
-Tables: players, weapon_rp, trigger_master, player_loadouts, teams, team_members, seasons, match_history, match_results, season_snapshots
+Tables: players, weapon_rp, frame_master, player_framesets, teams, team_members, seasons, match_history, match_results, season_snapshots
 Views: player_overall_ranking, recent_matches, weapon_popularity
 See `docs/schema.sql` for full schema.
+
+## Key Systems Summary
+
+- **フレーム**: 18種（STRIKER 3, GUNNER 4, MARKSMAN 3, SUPPORT 8）。frames.ymlで定義
+- **エーテル**: 最大1000。XPバー表示。HPダメージに連動してリーク（(maxHP-currentHP)*0.5/秒）
+- **E-Shift**: エーテル0で自動発動。ロビーテレポート（キルではない）
+- **ランク**: S(15000+), A(10000+), B(5000+), C(<5000), UNRANKED
+- **RP計算**: 非対称Elo方式（base 30, clamp 5-120, 敗者は勝者の70%, 参加ボーナス+5）
+- **マッチ**: ソロ5分/チーム10分。ジャッジスコア=与ダメ×0.5+エーテル残×0.3+HP残×0.2
+- **サドンデス**: スコア差1%以内で突入。エーテルリーク3倍。追加60秒
+- **ブロック復元**: 試合中のブロック変更を記録し、試合終了時に自動復元
 
 ---
 

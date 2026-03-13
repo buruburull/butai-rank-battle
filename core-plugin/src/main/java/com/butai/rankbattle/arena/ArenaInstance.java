@@ -10,6 +10,7 @@ import com.butai.rankbattle.util.MessageUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.block.BlockState;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -61,6 +62,8 @@ public class ArenaInstance {
     private final Set<UUID> spectators = new HashSet<>();
     // Damage tracking for judge scoring
     private final Map<UUID, Double> damageDealt = new HashMap<>();
+    // Block state tracking for map restoration
+    private final Map<Location, BlockState> originalBlocks = new LinkedHashMap<>();
     // Weapon type per player (determined at match start from slot 1)
     private final Map<UUID, WeaponType> playerWeaponTypes = new HashMap<>();
 
@@ -856,6 +859,9 @@ public class ArenaInstance {
         state = MatchState.FINISHED;
         FrameCommand fc = plugin.getFrameCommand();
 
+        // Restore blocks changed during the match
+        restoreBlocks();
+
         // Remove boss bar
         if (bossBar != null) {
             bossBar.removeAll();
@@ -1154,5 +1160,29 @@ public class ArenaInstance {
      */
     public double getDamageDealt(UUID uuid) {
         return damageDealt.getOrDefault(uuid, 0.0);
+    }
+
+    /**
+     * Record original block state before it is changed.
+     * Only records the first change per location (original state).
+     */
+    public void trackBlockChange(Location loc, BlockState originalState) {
+        originalBlocks.putIfAbsent(loc, originalState);
+    }
+
+    /**
+     * Restore all tracked blocks to their original state.
+     */
+    private void restoreBlocks() {
+        if (originalBlocks.isEmpty()) return;
+        int count = originalBlocks.size();
+        // Restore in reverse order to handle stacked changes correctly
+        List<BlockState> states = new ArrayList<>(originalBlocks.values());
+        Collections.reverse(states);
+        for (BlockState state : states) {
+            state.update(true, false);
+        }
+        originalBlocks.clear();
+        logger.info("Match #" + matchId + ": Restored " + count + " blocks.");
     }
 }

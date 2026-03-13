@@ -11,6 +11,7 @@ import com.butai.rankbattle.command.RankCommand;
 import com.butai.rankbattle.command.TeamCommand;
 import com.butai.rankbattle.listener.ChatTabListener;
 import com.butai.rankbattle.listener.CombatListener;
+import com.butai.rankbattle.listener.BlockChangeListener;
 import com.butai.rankbattle.listener.LobbyListener;
 import com.butai.rankbattle.listener.PlayerConnectionListener;
 import com.butai.rankbattle.manager.EtherManager;
@@ -152,6 +153,7 @@ public class BRBPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new CombatListener(etherManager, frameRegistry, queueManager, log), this);
         getServer().getPluginManager().registerEvents(new LobbyListener(), this);
+        getServer().getPluginManager().registerEvents(new BlockChangeListener(queueManager), this);
         chatTabListener = new ChatTabListener(rankManager);
         getServer().getPluginManager().registerEvents(chatTabListener, this);
 
