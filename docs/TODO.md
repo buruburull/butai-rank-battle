@@ -245,13 +245,7 @@
 - [ ] /team rank コマンド
 - [ ] TeamDAO.updateTeamRP()
 
-### 24. RP近似マッチング（完了）
-- [x] QueueManagerのFIFO→RP範囲マッチングに改修
-- [x] soloQueueをConcurrentHashMap（UUID→参加時刻）に変更
-- [x] processSoloQueue()でRP差最小ペアを選択するロジック実装
-- [x] 待ち時間に応じた範囲拡大（0-30秒:500, 30-60秒:1000, 60秒+:無制限）
-- [x] オフラインプレイヤーの自動除去
-- [x] ログにRP情報出力
+### 24. ~~RP近似マッチング~~（削除: マッチング速度低下のため、FIFOに戻した）
 
 ### 25. フレーム特殊効果の完全実装
 - [ ] Seeker: ホーミング射撃

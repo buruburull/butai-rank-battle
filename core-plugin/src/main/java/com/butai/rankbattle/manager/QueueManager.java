@@ -3,7 +3,6 @@ package com.butai.rankbattle.manager;
 import com.butai.rankbattle.BRBPlugin;
 import com.butai.rankbattle.arena.ArenaInstance;
 import com.butai.rankbattle.model.ArenaMap;
-import com.butai.rankbattle.model.BRBPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -14,14 +13,12 @@ import org.bukkit.scheduler.BukkitTask;
 import com.butai.rankbattle.model.Team;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
 
 /**
  * Manages matchmaking queues for solo ranked, team ranked, and practice matches.
  * Checks queue every 5 seconds (100 ticks) for matchmaking.
- * Solo ranked uses RP-based matchmaking with expanding range over wait time.
  */
 public class QueueManager {
 
@@ -29,14 +26,8 @@ public class QueueManager {
     private final FrameSetManager frameSetManager;
     private final Logger logger;
 
-    // RP matchmaking thresholds (wait time in ms -> max RP difference)
-    private static final int RP_RANGE_INITIAL = 500;     // 0-30 seconds
-    private static final int RP_RANGE_MEDIUM = 1000;     // 30-60 seconds
-    private static final long WAIT_THRESHOLD_1 = 30_000L; // 30 seconds
-    private static final long WAIT_THRESHOLD_2 = 60_000L; // 60 seconds (unlimited after)
-
-    // Solo ranked queue: UUID -> queue join time (for RP-based matchmaking)
-    private final Map<UUID, Long> soloQueue = new ConcurrentHashMap<>();
+    // Solo ranked queue
+    private final Queue<UUID> soloQueue = new ConcurrentLinkedQueue<>();
     // Team ranked queue (stores leader UUID, team data fetched from RankManager)
     private final Queue<UUID> teamQueue = new ConcurrentLinkedQueue<>();
     // Practice queue
@@ -114,7 +105,7 @@ public class QueueManager {
             return validation;
         }
 
-        soloQueue.put(uuid, System.currentTimeMillis());
+        soloQueue.add(uuid);
         return null;
     }
 
@@ -201,7 +192,7 @@ public class QueueManager {
      * Returns true if the player was in a queue.
      */
     public boolean leaveQueue(UUID uuid) {
-        boolean removed = soloQueue.remove(uuid) != null;
+        boolean removed = soloQueue.remove(uuid);
         removed |= teamQueue.remove(uuid);
         removed |= practiceQueue.remove(uuid);
 
@@ -219,7 +210,7 @@ public class QueueManager {
      * Check if a player is in any queue.
      */
     public boolean isInQueue(UUID uuid) {
-        if (soloQueue.containsKey(uuid) || practiceQueue.contains(uuid) || teamQueue.contains(uuid)) {
+        if (soloQueue.contains(uuid) || practiceQueue.contains(uuid) || teamQueue.contains(uuid)) {
             return true;
         }
         // Check if member's team leader is in team queue
@@ -245,39 +236,22 @@ public class QueueManager {
     }
 
     /**
-     * Get the allowed RP range based on wait time.
-     * 0-30s: 500, 30-60s: 1000, 60s+: unlimited (Integer.MAX_VALUE)
-     */
-    private int getAllowedRPRange(long waitTimeMs) {
-        if (waitTimeMs < WAIT_THRESHOLD_1) {
-            return RP_RANGE_INITIAL;
-        } else if (waitTimeMs < WAIT_THRESHOLD_2) {
-            return RP_RANGE_MEDIUM;
-        } else {
-            return Integer.MAX_VALUE;
-        }
-    }
-
-    /**
-     * Get the total RP for a player (used for matchmaking).
-     * Returns -1 if player data is not available.
-     */
-    private int getPlayerTotalRP(UUID uuid) {
-        RankManager rm = plugin.getRankManager();
-        BRBPlayer brb = rm.getPlayer(uuid);
-        if (brb == null) return -1;
-        return brb.getTotalRP();
-    }
-
-    /**
      * Check all queues and create matches when enough players are queued.
-     * Solo ranked uses RP-based matchmaking with expanding range.
      */
     private void checkQueues() {
-        // Solo ranked: RP-based matchmaking
-        processSoloQueue();
+        // Solo ranked: need 2 players
+        while (soloQueue.size() >= 2) {
+            UUID p1 = soloQueue.poll();
+            UUID p2 = soloQueue.poll();
 
-        // Team ranked: need 2 teams (FIFO)
+            // Verify both players are still online
+            if (!isOnline(p1)) { if (p2 != null) soloQueue.add(p2); continue; }
+            if (!isOnline(p2)) { soloQueue.add(p1); continue; }
+
+            createMatch(p1, p2, ArenaInstance.MatchType.SOLO_RANKED);
+        }
+
+        // Team ranked: need 2 teams
         while (teamQueue.size() >= 2) {
             UUID leader1 = teamQueue.poll();
             UUID leader2 = teamQueue.poll();
@@ -299,7 +273,7 @@ public class QueueManager {
             createTeamMatch(team1, team2);
         }
 
-        // Practice: need 2 players (FIFO, no RP matching)
+        // Practice: need 2 players
         while (practiceQueue.size() >= 2) {
             UUID p1 = practiceQueue.poll();
             UUID p2 = practiceQueue.poll();
@@ -308,65 +282,6 @@ public class QueueManager {
             if (!isOnline(p2)) { practiceQueue.add(p1); continue; }
 
             createMatch(p1, p2, ArenaInstance.MatchType.PRACTICE);
-        }
-    }
-
-    /**
-     * Process solo queue with RP-based matchmaking.
-     * Finds the best RP-matched pair where both players' wait time
-     * allows the RP difference between them.
-     */
-    private void processSoloQueue() {
-        if (soloQueue.size() < 2) return;
-
-        long now = System.currentTimeMillis();
-
-        // Remove offline players first
-        soloQueue.entrySet().removeIf(e -> !isOnline(e.getKey()));
-
-        if (soloQueue.size() < 2) return;
-
-        // Build list of queued players with their RP and wait time
-        List<UUID> players = new ArrayList<>(soloQueue.keySet());
-
-        // Find the best matching pair
-        UUID bestP1 = null;
-        UUID bestP2 = null;
-        int bestRPDiff = Integer.MAX_VALUE;
-
-        for (int i = 0; i < players.size(); i++) {
-            UUID p1 = players.get(i);
-            int rp1 = getPlayerTotalRP(p1);
-            long wait1 = now - soloQueue.getOrDefault(p1, now);
-            int range1 = getAllowedRPRange(wait1);
-
-            for (int j = i + 1; j < players.size(); j++) {
-                UUID p2 = players.get(j);
-                int rp2 = getPlayerTotalRP(p2);
-                long wait2 = now - soloQueue.getOrDefault(p2, now);
-                int range2 = getAllowedRPRange(wait2);
-
-                int rpDiff = Math.abs(rp1 - rp2);
-
-                // Both players must accept the RP difference based on their wait time
-                if (rpDiff <= range1 && rpDiff <= range2) {
-                    if (rpDiff < bestRPDiff) {
-                        bestRPDiff = rpDiff;
-                        bestP1 = p1;
-                        bestP2 = p2;
-                    }
-                }
-            }
-        }
-
-        // Create match if a valid pair was found
-        if (bestP1 != null && bestP2 != null) {
-            soloQueue.remove(bestP1);
-            soloQueue.remove(bestP2);
-            createMatch(bestP1, bestP2, ArenaInstance.MatchType.SOLO_RANKED);
-
-            // Recursively check for more matches
-            processSoloQueue();
         }
     }
 
@@ -442,9 +357,7 @@ public class QueueManager {
 
         String typeName = type == ArenaInstance.MatchType.PRACTICE ? "プラクティス" : "ランク";
         String mapInfo = arenaMap != null ? " [" + arenaMap.getName() + "]" : "";
-        String rpInfo = type == ArenaInstance.MatchType.SOLO_RANKED
-                ? " (RP: " + getPlayerTotalRP(p1) + " vs " + getPlayerTotalRP(p2) + ")" : "";
-        logger.info(typeName + "マッチ #" + match.getMatchId() + mapInfo + rpInfo + " created: "
+        logger.info(typeName + "マッチ #" + match.getMatchId() + mapInfo + " created: "
                 + p1.toString().substring(0, 8) + " vs " + p2.toString().substring(0, 8));
     }
 
@@ -483,15 +396,12 @@ public class QueueManager {
      * Get the queue position for a player (1-based), or 0 if not in queue.
      */
     public int getQueuePosition(UUID uuid) {
-        if (soloQueue.containsKey(uuid)) {
-            // For RP-based queue, position is based on join order
-            int pos = 1;
-            for (UUID queuedUuid : soloQueue.keySet()) {
-                if (queuedUuid.equals(uuid)) return pos;
-                pos++;
-            }
-        }
         int pos = 1;
+        for (UUID queuedUuid : soloQueue) {
+            if (queuedUuid.equals(uuid)) return pos;
+            pos++;
+        }
+        pos = 1;
         for (UUID queuedUuid : practiceQueue) {
             if (queuedUuid.equals(uuid)) return pos;
             pos++;
