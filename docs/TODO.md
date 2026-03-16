@@ -57,7 +57,7 @@
   - [x] STRIKER: Crescent, Fang, Bastion
   - [x] GUNNER: Pulse, Nova, Seeker, Frost
   - [x] MARKSMAN: Falcon, Volt, Zenith
-  - [x] SUPPORT: Leap, Barrier, Cloak, Warp, Rampart, Blast, Tracer, Core Frame
+  - [x] SUPPORT: Leap, Cloak, Warp, Vant, Blast, Tracer
 - [x] FrameRegistry.java（frames.yml読み込み）
 - [x] /frame list コマンド
 
@@ -250,16 +250,15 @@
 ### 25. フレーム特殊効果の完全実装（完了）
 - [x] Seeker: ホーミング射撃（20ブロック追尾、軌道修正）
 - [x] Bastion: シールドモード切替（攻撃力半減・被ダメ60%カット）
-- [x] Nova: 着弾時爆発（半径4.0、威力5.0）
+- [x] Nova: 分散弾（3発散布、各着弾時小爆発）
 - [x] Falcon: チャージ2.0秒→2.5倍（線形スケール）
 - [x] Zenith: チャージ3.0秒→3.0倍（線形スケール）
 - [x] Volt: 貫通3体（Arrow.setPierceLevel）
-- [x] Leap: ジャンプブースト（上方+前方モメンタム）
+- [x] Leap: 方向ダッシュ（向いている方向に高速移動、空中使用可）
 - [x] Warp: 瞬間移動32m（レイトレース安全着地）
-- [x] Rampart: 障壁生成（3x3バリアブロック、4秒消滅）
+- [x] Vant: 障壁生成（3x3バリアブロック、4秒消滅）
 - [x] Blast: 爆発（半径5.0、威力6.0、距離減衰）
 - [x] Tracer: 発光効果5秒（視線10度コーン内検索）
-- [x] Barrier: 吸収8.0付与（Absorption II、10秒）
 - [x] Cloak: 右クリックトグル発動/解除
 - [x] FrameEffectListener新規作成（右クリック発動系フレーム）
 - [x] CombatListener拡張（Nova爆発、Volt貫通、Falcon/Zenithチャージ、Bastion被ダメ）
@@ -276,4 +275,4 @@
 
 ---
 
-*最終更新: 2026-03-14*
+*最終更新: 2026-03-16*

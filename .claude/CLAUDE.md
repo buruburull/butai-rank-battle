@@ -132,7 +132,7 @@ butai-rank-battle/
 
 - **config.yml**: データベース接続設定のみ（host, port, name, username, password）
 - **frames.yml**: ゲーム関連の全設定
-  - フレーム定義（18種: striker 3, gunner 4, marksman 3, support 8）
+  - フレーム定義（16種: striker 3, gunner 4, marksman 3, support 6）
   - ロビー設定（spawn location）
   - NPC設定（Villager NPCs with PDC tags: 5体）
   - ホログラム設定（TextDisplay: welcome banner + ranking TOP10, 60秒更新）
@@ -221,7 +221,7 @@ See `docs/schema.sql` for full schema.
 
 ## Key Systems Summary
 
-- **フレーム**: 18種（STRIKER 3, GUNNER 4, MARKSMAN 3, SUPPORT 8）。frames.ymlで定義
+- **フレーム**: 16種（STRIKER 3, GUNNER 4, MARKSMAN 3, SUPPORT 6）。frames.ymlで定義
 - **エーテル**: 最大1000。XPバー表示。HPダメージに連動してリーク（(maxHP-currentHP)*0.5/秒）
 - **E-Shift**: エーテル0で自動発動。ロビーテレポート（キルではない）
 - **ランク**: S(15000+), A(10000+), B(5000+), C(<5000), UNRANKED

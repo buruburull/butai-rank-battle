@@ -231,6 +231,11 @@ public class CombatListener implements Listener {
                 arrow.setPierceLevel(3);
                 voltArrowHits.put(arrow.getEntityId(), 0);
             }
+
+            // Nova: spawn additional spread projectiles (3 total)
+            if ("nova".equals(frame.getId())) {
+                spawnNovaSpreadArrows(shooter, arrow);
+            }
         }
 
         // Record bow draw start time for Falcon/Zenith charge calculation
@@ -261,23 +266,19 @@ public class CombatListener implements Listener {
     }
 
     /**
-     * Nova: Create explosion at projectile impact point.
+     * Nova: Create small explosion at each spread projectile impact point.
      */
     private void handleNovaExplosion(Player shooter, Projectile projectile) {
         Location hitLoc = projectile.getLocation();
         UUID shooterUuid = shooter.getUniqueId();
 
-        // Visual explosion (no block damage)
-        hitLoc.getWorld().createExplosion(hitLoc, 0f, false, false);
-
-        // Apply damage to nearby players (radius 4.0, damage 5.0)
-        double radius = 4.0;
-        double maxDamage = 5.0;
+        // Each spread arrow creates a small explosion (radius 2.5, damage 3.0)
+        double radius = 2.5;
+        double maxDamage = 3.0;
         for (Player target : hitLoc.getWorld().getPlayers()) {
             if (target.equals(shooter)) continue;
             if (!etherManager.isTracking(target.getUniqueId())) continue;
 
-            // Check friendly fire
             if (queueManager != null) {
                 ArenaInstance match = queueManager.getPlayerMatch(shooterUuid);
                 if (match != null && match.isTeammate(shooterUuid, target.getUniqueId())) continue;
@@ -298,11 +299,42 @@ public class CombatListener implements Listener {
             }
         }
 
-        // Effects
-        hitLoc.getWorld().playSound(hitLoc, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.8f);
-        hitLoc.getWorld().spawnParticle(Particle.EXPLOSION, hitLoc, 3, 1.0, 1.0, 1.0, 0);
+        // Small explosion effect per projectile
+        hitLoc.getWorld().playSound(hitLoc, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.2f);
+        hitLoc.getWorld().spawnParticle(Particle.EXPLOSION, hitLoc, 1, 0.3, 0.3, 0.3, 0);
 
         projectile.remove();
+    }
+
+    /**
+     * Nova: Spawn 2 additional spread arrows alongside the main shot (3 total).
+     * Each arrow diverges slightly from the main direction.
+     */
+    private void spawnNovaSpreadArrows(Player shooter, Arrow mainArrow) {
+        Vector baseVel = mainArrow.getVelocity();
+        double speed = baseVel.length();
+        Vector baseDir = baseVel.normalize();
+
+        // Calculate perpendicular vectors for spread
+        Vector up = new Vector(0, 1, 0);
+        Vector right = baseDir.getCrossProduct(up).normalize();
+
+        // Spread angles (degrees from center)
+        double spreadAngle = Math.toRadians(8.0);
+
+        Vector[] offsets = {
+                right.clone().multiply(Math.sin(spreadAngle)).add(baseDir.clone().multiply(Math.cos(spreadAngle))),
+                right.clone().multiply(-Math.sin(spreadAngle)).add(baseDir.clone().multiply(Math.cos(spreadAngle)))
+        };
+
+        for (Vector offset : offsets) {
+            Arrow spreadArrow = shooter.getWorld().spawnArrow(
+                    mainArrow.getLocation(), offset.normalize(), (float) speed, 0f);
+            spreadArrow.setShooter(shooter);
+            spreadArrow.setCustomName("brb_nova");
+            spreadArrow.setDamage(0); // Damage handled by explosion, not arrow hit
+            spreadArrow.setPickupStatus(Arrow.PickupStatus.DISALLOWED);
+        }
     }
 
     /**

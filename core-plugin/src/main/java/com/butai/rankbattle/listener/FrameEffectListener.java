@@ -32,10 +32,9 @@ import java.util.logging.Logger;
 
 /**
  * Handles right-click activated frame effects:
- * - Leap: jump boost 2.5x
- * - Barrier: absorption 8.0
+ * - Leap: directional dash
  * - Warp: teleport 32m forward
- * - Rampart: barrier blocks (4s duration)
+ * - Vant: barrier blocks (4s duration)
  * - Blast: explosion (radius 5.0, power 6.0)
  * - Bastion: shield mode toggle
  * - Cloak: stealth toggle
@@ -99,9 +98,8 @@ public class FrameEffectListener implements Listener {
 
         switch (frame.getId()) {
             case "leap" -> handleLeap(player, frame, event);
-            case "barrier" -> handleBarrier(player, frame, event);
             case "warp" -> handleWarp(player, frame, event);
-            case "rampart" -> handleRampart(player, frame, event);
+            case "vant" -> handleVant(player, frame, event);
             case "blast" -> handleBlast(player, frame, event);
             case "bastion" -> handleBastionToggle(player, frame, event);
             case "cloak" -> handleCloakToggle(player, frame, event);
@@ -126,46 +124,17 @@ public class FrameEffectListener implements Listener {
             return;
         }
 
-        // Apply jump boost: launch player upward with 2.5x velocity
+        // Directional dash: launch player in the direction they're facing
         Vector direction = player.getLocation().getDirection().normalize();
-        // Jump upward with forward momentum
-        player.setVelocity(new Vector(direction.getX() * 1.2, 1.25, direction.getZ() * 1.2));
+        // Apply strong velocity in facing direction (including vertical component)
+        player.setVelocity(direction.multiply(2.5));
 
         // Visual effect
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.0f, 1.5f);
-        player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 10, 0.3, 0.1, 0.3, 0.05);
+        player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 15, 0.3, 0.1, 0.3, 0.08);
 
         setCooldown(uuid, frame.getId(), frame.getCooldown());
-        MessageUtil.sendInfo(player, "§aLeap §7発動！");
-    }
-
-    // ========== BARRIER ==========
-
-    private void handleBarrier(Player player, FrameData frame, PlayerInteractEvent event) {
-        event.setCancelled(true);
-        UUID uuid = player.getUniqueId();
-
-        if (isOnCooldown(uuid, frame.getId())) {
-            long remaining = getCooldownRemaining(uuid, frame.getId());
-            MessageUtil.sendError(player, "クールタイム中！ (残り" + remaining + "秒)");
-            return;
-        }
-
-        if (!etherManager.consumeUse(uuid, frame)) {
-            MessageUtil.sendError(player, "エーテル不足！ (必要: " + frame.getEtherUse() + ")");
-            return;
-        }
-
-        // Apply absorption hearts (8.0 = 4 golden hearts)
-        player.addPotionEffect(new PotionEffect(
-                PotionEffectType.ABSORPTION, 200, 1, false, true, true)); // 10 seconds, level 2 = 8 absorption
-
-        // Visual effect
-        player.getWorld().playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, 1.0f, 1.2f);
-        player.getWorld().spawnParticle(Particle.END_ROD, player.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.05);
-
-        setCooldown(uuid, frame.getId(), frame.getCooldown());
-        MessageUtil.sendInfo(player, "§bBarrier §7発動！ 吸収ハート付与。");
+        MessageUtil.sendInfo(player, "§aLeap §7発動！ ダッシュ！");
     }
 
     // ========== WARP ==========
@@ -229,9 +198,9 @@ public class FrameEffectListener implements Listener {
         MessageUtil.sendInfo(player, "§dWarp §7発動！");
     }
 
-    // ========== RAMPART ==========
+    // ========== VANT ==========
 
-    private void handleRampart(Player player, FrameData frame, PlayerInteractEvent event) {
+    private void handleVant(Player player, FrameData frame, PlayerInteractEvent event) {
         event.setCancelled(true);
         UUID uuid = player.getUniqueId();
 
@@ -289,7 +258,7 @@ public class FrameEffectListener implements Listener {
             }.runTaskLater(BRBPlugin.getInstance(), 80L); // 4 seconds = 80 ticks
         }
 
-        MessageUtil.sendInfo(player, "§6Rampart §7発動！ 障壁生成（4秒）。");
+        MessageUtil.sendInfo(player, "§6Vant §7発動！ 障壁生成（4秒）。");
     }
 
     // ========== BLAST ==========

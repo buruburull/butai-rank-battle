@@ -61,7 +61,7 @@ frames:
     ether_use: 20
     ether_sustain: 0
     cooldown: 0
-    description: "着弾時爆発（半径4.0, 威力5）。範囲攻撃型。"
+    description: "分散弾。複数の弾が散らばり着弾時に爆発。範囲攻撃型。"
 
   seeker:
     name: "Seeker"
@@ -129,18 +129,7 @@ frames:
     ether_use: 40
     ether_sustain: 0
     cooldown: 8
-    description: "ジャンプ2.5倍。空中機動用。CT8秒。"
-
-  barrier:
-    name: "Barrier"
-    category: support
-    mc_item: SHIELD
-    damage: 0
-    damage_multiplier: 1.0
-    ether_use: 30
-    ether_sustain: 0
-    cooldown: 30
-    description: "吸収8.0付与。CT30秒。"
+    description: "向いている方向にダッシュ。空中使用可。CT8秒。"
 
   cloak:
     name: "Cloak"
@@ -164,8 +153,8 @@ frames:
     cooldown: 12
     description: "瞬間移動32.0m。CT12秒。"
 
-  rampart:
-    name: "Rampart"
+  vant:
+    name: "Vant"
     category: support
     mc_item: GOLD_BLOCK
     damage: 0
@@ -173,7 +162,7 @@ frames:
     ether_use: 50
     ether_sustain: 0
     cooldown: 0
-    description: "障壁生成。強度10.0、4秒持続。"
+    description: "正面に3×3の壁を生成。4秒持続。"
 
   blast:
     name: "Blast"
@@ -196,17 +185,6 @@ frames:
     ether_sustain: 0
     cooldown: 0
     description: "発光効果5秒。視認距離64.0。"
-
-  core_frame:
-    name: "Core Frame"
-    category: support
-    mc_item: IRON_INGOT
-    damage: 0
-    damage_multiplier: 1.0
-    ether_use: 0
-    ether_sustain: 0
-    cooldown: 0
-    description: "フリー枠。コストなし。初心者向け。"
 
 # ========== LOBBY SETTINGS ==========
 
