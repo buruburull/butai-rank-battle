@@ -294,7 +294,7 @@ public class RankCommand implements CommandExecutor, TabCompleter {
                 Map<String, Object> row = top.get(i);
                 String name = (String) row.get("name");
                 String rankStr = (String) row.get("rank_class");
-                int totalRp = (int) row.get("total_rp");
+                int totalRp = ((Number) row.get("total_rp")).intValue();
                 RankClass rc = RankClass.fromString(rankStr);
 
                 String posColor = i == 0 ? "§6" : i <= 2 ? "§f" : "§7";
@@ -318,9 +318,9 @@ public class RankCommand implements CommandExecutor, TabCompleter {
             for (int i = 0; i < top.size(); i++) {
                 Map<String, Object> row = top.get(i);
                 String name = (String) row.get("name");
-                int rp = (int) row.get("rp");
-                int wins = (int) row.get("wins");
-                int losses = (int) row.get("losses");
+                int rp = ((Number) row.get("rp")).intValue();
+                int wins = ((Number) row.get("wins")).intValue();
+                int losses = ((Number) row.get("losses")).intValue();
 
                 String posColor = i == 0 ? "§6" : i <= 2 ? "§f" : "§7";
                 MessageUtil.send(player, posColor + " #" + (i + 1) + " §f" + name
@@ -375,11 +375,11 @@ public class RankCommand implements CommandExecutor, TabCompleter {
             SimpleDateFormat sdf = new SimpleDateFormat("MM/dd HH:mm");
             for (Map<String, Object> row : history) {
                 String matchType = (String) row.get("match_type");
-                int durationSec = (int) row.get("duration_sec");
+                int durationSec = ((Number) row.get("duration_sec")).intValue();
                 String weaponType = (String) row.get("weapon_type");
-                int rpChange = (int) row.get("rp_change");
-                int placement = (int) row.get("placement");
-                double damageDealt = (double) row.get("damage_dealt");
+                int rpChange = ((Number) row.get("rp_change")).intValue();
+                int placement = ((Number) row.get("placement")).intValue();
+                double damageDealt = ((Number) row.get("damage_dealt")).doubleValue();
                 Timestamp startedAt = (Timestamp) row.get("started_at");
 
                 String typeColor = switch (matchType) {

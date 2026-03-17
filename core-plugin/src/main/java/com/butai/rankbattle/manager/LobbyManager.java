@@ -267,7 +267,7 @@ public class LobbyManager {
                 Map<String, Object> row = top.get(i);
                 String name = (String) row.get("name");
                 String rankStr = (String) row.get("rank_class");
-                int totalRp = (int) row.get("total_rp");
+                int totalRp = ((Number) row.get("total_rp")).intValue();
 
                 com.butai.rankbattle.model.RankClass rc =
                         com.butai.rankbattle.model.RankClass.fromString(rankStr);
