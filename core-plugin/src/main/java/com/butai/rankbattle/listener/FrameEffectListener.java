@@ -241,18 +241,18 @@ public class FrameEffectListener implements Listener {
             return;
         }
 
-        // Place barrier blocks 2 blocks in front of player (3 wide, 3 tall)
+        // Place 3x3 glass wall 2 blocks in front of player
         Location loc = player.getLocation();
         Vector direction = loc.getDirection().normalize();
         direction.setY(0); // Only horizontal
         direction.normalize();
 
-        // Calculate front position (2 blocks ahead)
-        Location front = loc.clone().add(direction.multiply(2));
-        front.setY(Math.floor(front.getY()));
+        // Calculate perpendicular direction for width (before modifying direction)
+        Vector perp = new Vector(-direction.getZ(), 0, direction.getX()).normalize();
 
-        // Calculate perpendicular direction for width
-        Vector perp = new Vector(-direction.getZ(), 0, direction.getX());
+        // Calculate front position (2 blocks ahead)
+        Location front = loc.clone().add(direction.clone().multiply(2));
+        front.setY(Math.floor(front.getY()));
 
         // Place 3 wide x 3 tall glass wall
         for (int w = -1; w <= 1; w++) {
