@@ -134,22 +134,37 @@ public class LobbyManager {
      * Clean up old BRB entities from previous server sessions.
      */
     private void cleanupOldEntities() {
-        // Ensure lobby chunk is loaded so all entities can be found
-        if (lobbyLocation != null) {
-            lobbyLocation.getChunk().load();
-        }
+        // Load all chunks where NPCs/holograms are configured
+        loadConfiguredChunks();
 
         int removed = 0;
         for (World world : Bukkit.getWorlds()) {
             for (org.bukkit.entity.Entity entity : world.getEntities()) {
+                boolean shouldRemove = false;
+
+                // Remove entities with our PDC tags
                 if (entity.getPersistentDataContainer().has(NPC_KEY, PersistentDataType.STRING)
                         || entity.getPersistentDataContainer().has(HOLOGRAM_KEY, PersistentDataType.STRING)) {
-                    entity.remove();
-                    removed++;
+                    shouldRemove = true;
                 }
-                // Also remove orphaned TextDisplays near lobby (fallback for untagged entities)
-                if (entity instanceof TextDisplay && lobbyLocation != null
-                        && entity.getLocation().distance(lobbyLocation) < 30) {
+
+                // Remove ALL Villagers with no AI near lobby (our NPCs)
+                if (!shouldRemove && entity instanceof Villager villager
+                        && !villager.hasAI() && lobbyLocation != null
+                        && entity.getWorld().equals(lobbyLocation.getWorld())
+                        && entity.getLocation().distance(lobbyLocation) < 100) {
+                    shouldRemove = true;
+                }
+
+                // Remove ALL TextDisplays near lobby (our holograms)
+                if (!shouldRemove && entity instanceof TextDisplay
+                        && lobbyLocation != null
+                        && entity.getWorld().equals(lobbyLocation.getWorld())
+                        && entity.getLocation().distance(lobbyLocation) < 100) {
+                    shouldRemove = true;
+                }
+
+                if (shouldRemove) {
                     entity.remove();
                     removed++;
                 }
@@ -157,6 +172,33 @@ public class LobbyManager {
         }
         if (removed > 0) {
             logger.info("Cleaned up " + removed + " old lobby entities.");
+        }
+    }
+
+    /**
+     * Load chunks for all configured NPC and hologram locations to ensure entities are accessible.
+     */
+    private void loadConfiguredChunks() {
+        if (lobbyLocation != null) {
+            lobbyLocation.getChunk().load();
+        }
+
+        // Load NPC chunks
+        ConfigurationSection npcs = framesConfig.getConfigurationSection("npcs");
+        if (npcs != null) {
+            for (String key : npcs.getKeys(false)) {
+                Location loc = getLocationFromSection(npcs.getConfigurationSection(key));
+                if (loc != null) loc.getChunk().load();
+            }
+        }
+
+        // Load hologram chunks
+        ConfigurationSection holos = framesConfig.getConfigurationSection("holograms");
+        if (holos != null) {
+            for (String key : holos.getKeys(false)) {
+                Location loc = getLocationFromSection(holos.getConfigurationSection(key));
+                if (loc != null) loc.getChunk().load();
+            }
         }
     }
 
