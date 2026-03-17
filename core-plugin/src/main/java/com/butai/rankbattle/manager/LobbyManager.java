@@ -134,13 +134,29 @@ public class LobbyManager {
      * Clean up old BRB entities from previous server sessions.
      */
     private void cleanupOldEntities() {
+        // Ensure lobby chunk is loaded so all entities can be found
+        if (lobbyLocation != null) {
+            lobbyLocation.getChunk().load();
+        }
+
+        int removed = 0;
         for (World world : Bukkit.getWorlds()) {
             for (org.bukkit.entity.Entity entity : world.getEntities()) {
                 if (entity.getPersistentDataContainer().has(NPC_KEY, PersistentDataType.STRING)
                         || entity.getPersistentDataContainer().has(HOLOGRAM_KEY, PersistentDataType.STRING)) {
                     entity.remove();
+                    removed++;
+                }
+                // Also remove orphaned TextDisplays near lobby (fallback for untagged entities)
+                if (entity instanceof TextDisplay && lobbyLocation != null
+                        && entity.getLocation().distance(lobbyLocation) < 30) {
+                    entity.remove();
+                    removed++;
                 }
             }
+        }
+        if (removed > 0) {
+            logger.info("Cleaned up " + removed + " old lobby entities.");
         }
     }
 
