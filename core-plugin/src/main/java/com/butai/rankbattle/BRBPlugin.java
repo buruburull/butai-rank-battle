@@ -119,6 +119,9 @@ public class BRBPlugin extends JavaPlugin {
 
         // Register commands
         frameCommand = new FrameCommand(frameRegistry, frameSetManager);
+        com.butai.rankbattle.gui.FrameSetGUI frameSetGUI =
+                new com.butai.rankbattle.gui.FrameSetGUI(frameRegistry, frameSetManager);
+        frameCommand.setFrameSetGUI(frameSetGUI);
         PluginCommand frameCmdObj = getCommand("frame");
         if (frameCmdObj != null) {
             frameCmdObj.setExecutor(frameCommand);
@@ -161,6 +164,9 @@ public class BRBPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(combatListener, this);
         getServer().getPluginManager().registerEvents(frameEffectListener, this);
         getServer().getPluginManager().registerEvents(new LobbyListener(), this);
+        getServer().getPluginManager().registerEvents(
+                new com.butai.rankbattle.gui.FrameSetGUIListener(
+                        frameSetGUI, frameSetManager, frameRegistry, frameCommand), this);
         getServer().getPluginManager().registerEvents(new BlockChangeListener(queueManager), this);
         chatTabListener = new ChatTabListener(rankManager);
         getServer().getPluginManager().registerEvents(chatTabListener, this);

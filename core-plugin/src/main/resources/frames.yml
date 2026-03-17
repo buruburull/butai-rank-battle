@@ -233,8 +233,8 @@ npcs:
     z: -25.50
     yaw: 180.0
     name: "§b§lフレームセット"
-    subtitle: "§7右クリックで確認"
-    command: "frame view"
+    subtitle: "§7右クリックで設定"
+    command: "frame"
   stats:
     world: world
     x: 53.50

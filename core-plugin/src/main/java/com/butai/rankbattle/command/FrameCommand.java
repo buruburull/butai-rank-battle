@@ -18,6 +18,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
+import com.butai.rankbattle.gui.FrameSetGUI;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,10 +30,15 @@ public class FrameCommand implements CommandExecutor, TabCompleter {
 
     private final FrameRegistry frameRegistry;
     private final FrameSetManager frameSetManager;
+    private FrameSetGUI frameSetGUI;
 
     public FrameCommand(FrameRegistry frameRegistry, FrameSetManager frameSetManager) {
         this.frameRegistry = frameRegistry;
         this.frameSetManager = frameSetManager;
+    }
+
+    public void setFrameSetGUI(FrameSetGUI gui) {
+        this.frameSetGUI = gui;
     }
 
     /**
@@ -144,7 +151,11 @@ public class FrameCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            sendUsage(player);
+            if (frameSetGUI != null) {
+                frameSetGUI.openGUI(player);
+            } else {
+                sendUsage(player);
+            }
             return true;
         }
 
