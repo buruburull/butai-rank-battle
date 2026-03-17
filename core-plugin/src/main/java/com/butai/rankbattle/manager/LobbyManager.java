@@ -235,9 +235,11 @@ public class LobbyManager {
                 TextDisplay td = (TextDisplay) loc.getWorld().spawnEntity(loc, EntityType.TEXT_DISPLAY);
                 td.setText("§6§l=== ランキング TOP10 ===\n§7読み込み中...");
                 td.setBillboard(Display.Billboard.CENTER);
-                td.setAlignment(TextDisplay.TextAlignment.CENTER);
+                td.setAlignment(TextDisplay.TextAlignment.LEFT);
+                td.setLineWidth(400);
                 td.setSeeThrough(false);
                 td.setShadowed(true);
+                td.setBackgroundColor(org.bukkit.Color.fromARGB(160, 0, 0, 0));
                 td.getPersistentDataContainer().set(HOLOGRAM_KEY, PersistentDataType.STRING, "ranking");
                 spawnedHolograms.add(td.getUniqueId());
                 rankingDisplay = td;
@@ -258,7 +260,7 @@ public class LobbyManager {
         List<Map<String, Object>> top = rm.getTopPlayers(10);
 
         StringBuilder sb = new StringBuilder();
-        sb.append("§6§l═══ ランキング TOP10 ═══\n");
+        sb.append("§6§l═══ ランキング TOP10 ═══\n\n");
 
         if (top.isEmpty()) {
             sb.append("§7データがありません。");
@@ -272,11 +274,13 @@ public class LobbyManager {
                 com.butai.rankbattle.model.RankClass rc =
                         com.butai.rankbattle.model.RankClass.fromString(rankStr);
 
-                String posColor = i == 0 ? "§6" : i <= 2 ? "§f" : "§7";
-                sb.append(posColor).append("#").append(i + 1).append(" ");
-                sb.append(rc.getColor()).append("[").append(rc.getDisplayName()).append("] ");
-                sb.append("§f").append(name).append(" §e").append(totalRp).append(" RP");
-                if (i < top.size() - 1) sb.append("\n");
+                String posColor = i == 0 ? "§6§l" : i <= 2 ? "§f" : "§7";
+                String pos = String.format("%2d", i + 1);
+                sb.append(posColor).append("#").append(pos).append(" ");
+                sb.append(rc.getColor()).append(rc.getDisplayName()).append(" ");
+                sb.append("§f").append(name);
+                sb.append(" §8- §e").append(totalRp).append(" RP");
+                sb.append("\n");
             }
         }
 
