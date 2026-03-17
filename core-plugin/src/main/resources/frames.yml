@@ -167,13 +167,13 @@ frames:
   blast:
     name: "Blast"
     category: support
-    mc_item: TNT
+    mc_item: SNOWBALL
     damage: 0
     damage_multiplier: 1.0
     ether_use: 35
     ether_sustain: 0
     cooldown: 0
-    description: "爆発（半径5.0, 威力6.0）。"
+    description: "雪玉を投擲し着弾時に爆破。地形破壊あり。"
 
   tracer:
     name: "Tracer"

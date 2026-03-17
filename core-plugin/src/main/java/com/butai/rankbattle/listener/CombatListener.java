@@ -15,15 +15,19 @@ import org.bukkit.Sound;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
+import org.bukkit.entity.Snowball;
 import org.bukkit.entity.Trident;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -105,6 +109,13 @@ public class CombatListener implements Listener {
                 event.setCancelled(true);
                 return;
             }
+        }
+
+        // If attacker has Cloak active, deactivate it on attack
+        if (etherManager.isSustainActive(attacker.getUniqueId(), "cloak")) {
+            etherManager.deactivateSustain(attacker.getUniqueId(), "cloak");
+            attacker.removePotionEffect(PotionEffectType.INVISIBILITY);
+            MessageUtil.sendInfo(attacker, "§7Cloak §c攻撃により解除");
         }
 
         // Get the frame used by the attacker
@@ -200,8 +211,44 @@ public class CombatListener implements Listener {
     }
 
     /**
+     * Track bow draw start for Falcon/Zenith charge feedback.
+     * When a player right-clicks with a Falcon/Zenith bow, record draw start time
+     * and schedule a delayed notification when charge is complete.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onBowDraw(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        Player player = event.getPlayer();
+        if (!etherManager.isTracking(player.getUniqueId())) return;
+
+        FrameData frame = getFrameFromItem(event.getItem());
+        if (frame == null) return;
+
+        if ("falcon".equals(frame.getId()) || "zenith".equals(frame.getId())) {
+            UUID uuid = player.getUniqueId();
+            bowDrawStart.put(uuid, System.currentTimeMillis());
+
+            // Schedule charge-complete notification
+            double chargeSeconds = "falcon".equals(frame.getId()) ? 2.0 : 3.0;
+            long chargeTicks = (long) (chargeSeconds * 20);
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    // Only notify if still drawing (bowDrawStart still present)
+                    if (!bowDrawStart.containsKey(uuid)) return;
+                    if (!player.isOnline()) return;
+                    if (!etherManager.isTracking(uuid)) return;
+
+                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1.0f, 2.0f);
+                    player.sendActionBar("§a§l✦ チャージ完了！ ✦");
+                }
+            }.runTaskLater(BRBPlugin.getInstance(), chargeTicks);
+        }
+    }
+
+    /**
      * Handle bow/crossbow shooting - consume ether for GUNNER/MARKSMAN frames.
-     * Also track bow draw start for charge-based frames.
      */
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onEntityShootBow(EntityShootBowEvent event) {
@@ -238,17 +285,35 @@ public class CombatListener implements Listener {
             }
         }
 
-        // Record bow draw start time for Falcon/Zenith charge calculation
-        if ("falcon".equals(frame.getId()) || "zenith".equals(frame.getId())) {
-            // Store the shoot time; charge is calculated from vanilla force value
-            // event.getForce() is 0.0-1.0, we need longer charge times
-            // We'll use force combined with a custom timer
-            bowDrawStart.put(shooter.getUniqueId(), System.currentTimeMillis());
-        }
+        // bowDrawStart is already set by onBowDraw (PlayerInteractEvent)
+        // No need to set it here - charge is calculated from draw start to shoot time
     }
 
     /**
-     * Handle projectile hit events for Nova explosion and Volt piercing.
+     * Handle trident launch for Seeker homing activation.
+     */
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onProjectileLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity() instanceof Trident trident)) return;
+        if (!(trident.getShooter() instanceof Player shooter)) return;
+        if (!etherManager.isTracking(shooter.getUniqueId())) return;
+
+        FrameData frame = getHeldFrame(shooter);
+        if (frame == null || !"seeker".equals(frame.getId())) return;
+
+        // Consume ether for the shot
+        if (!etherManager.consumeUse(shooter.getUniqueId(), frame)) {
+            event.setCancelled(true);
+            MessageUtil.sendError(shooter, "エーテル不足！ (必要: " + frame.getEtherUse() + ")");
+            return;
+        }
+
+        // Start homing behavior
+        startSeekerHoming(shooter, trident);
+    }
+
+    /**
+     * Handle projectile hit events for Nova explosion, Volt piercing, and Blast explosion.
      */
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onProjectileHit(ProjectileHitEvent event) {
@@ -262,6 +327,7 @@ public class CombatListener implements Listener {
         switch (frameId) {
             case "nova" -> handleNovaExplosion(shooter, projectile);
             case "volt" -> handleVoltPierce(projectile);
+            case "blast" -> handleBlastExplosion(shooter, projectile);
         }
     }
 
@@ -302,6 +368,46 @@ public class CombatListener implements Listener {
         // Small explosion effect per projectile
         hitLoc.getWorld().playSound(hitLoc, Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1.2f);
         hitLoc.getWorld().spawnParticle(Particle.EXPLOSION, hitLoc, 1, 0.3, 0.3, 0.3, 0);
+
+        projectile.remove();
+    }
+
+    /**
+     * Blast: Create real explosion at snowball impact point (with terrain destruction).
+     */
+    private void handleBlastExplosion(Player shooter, Projectile projectile) {
+        Location hitLoc = projectile.getLocation();
+        UUID shooterUuid = shooter.getUniqueId();
+
+        // Real explosion with block damage (power 3.0)
+        hitLoc.getWorld().createExplosion(hitLoc, 3.0f, false, true);
+
+        // Apply additional damage to nearby players (radius 5.0, damage 6.0)
+        double radius = 5.0;
+        double maxDamage = 6.0;
+        for (Player target : hitLoc.getWorld().getPlayers()) {
+            if (target.equals(shooter)) continue;
+            if (!etherManager.isTracking(target.getUniqueId())) continue;
+
+            if (queueManager != null) {
+                ArenaInstance match = queueManager.getPlayerMatch(shooterUuid);
+                if (match != null && match.isTeammate(shooterUuid, target.getUniqueId())) continue;
+            }
+
+            double distance = target.getLocation().distance(hitLoc);
+            if (distance <= radius) {
+                double damageScale = 1.0 - (distance / radius);
+                double damage = maxDamage * damageScale;
+                target.damage(damage, shooter);
+
+                if (queueManager != null) {
+                    ArenaInstance match = queueManager.getPlayerMatch(shooterUuid);
+                    if (match != null) {
+                        match.addDamageDealt(shooterUuid, damage);
+                    }
+                }
+            }
+        }
 
         projectile.remove();
     }
@@ -545,6 +651,12 @@ public class CombatListener implements Listener {
     private String getFrameIdFromProjectile(Projectile projectile) {
         if (projectile instanceof Arrow arrow) {
             String name = arrow.getCustomName();
+            if (name != null && name.startsWith("brb_")) {
+                return name.substring(4);
+            }
+        }
+        if (projectile instanceof Snowball snowball) {
+            String name = snowball.getCustomName();
             if (name != null && name.startsWith("brb_")) {
                 return name.substring(4);
             }

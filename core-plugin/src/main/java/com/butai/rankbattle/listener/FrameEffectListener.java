@@ -1,6 +1,5 @@
 package com.butai.rankbattle.listener;
 
-import com.butai.rankbattle.BRBPlugin;
 import com.butai.rankbattle.arena.ArenaInstance;
 import com.butai.rankbattle.command.FrameCommand;
 import com.butai.rankbattle.manager.EtherManager;
@@ -16,13 +15,13 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
@@ -74,6 +73,11 @@ public class FrameEffectListener implements Listener {
     public void clearPlayerState(UUID uuid) {
         cooldowns.remove(uuid);
         bastionShieldActive.remove(uuid);
+        // Remove invisibility if Cloak was active
+        Player player = org.bukkit.Bukkit.getPlayer(uuid);
+        if (player != null) {
+            player.removePotionEffect(PotionEffectType.INVISIBILITY);
+        }
     }
 
     @EventHandler(priority = EventPriority.NORMAL)
@@ -101,7 +105,6 @@ public class FrameEffectListener implements Listener {
             case "warp" -> handleWarp(player, frame, event);
             case "vant" -> handleVant(player, frame, event);
             case "blast" -> handleBlast(player, frame, event);
-            case "bastion" -> handleBastionToggle(player, frame, event);
             case "cloak" -> handleCloakToggle(player, frame, event);
             case "tracer" -> handleTracer(player, frame, event);
         }
@@ -222,9 +225,7 @@ public class FrameEffectListener implements Listener {
         // Calculate perpendicular direction for width
         Vector perp = new Vector(-direction.getZ(), 0, direction.getX());
 
-        List<Location> barrierBlocks = new ArrayList<>();
-
-        // Place 3 wide x 3 tall barrier
+        // Place 3 wide x 3 tall glass wall
         for (int w = -1; w <= 1; w++) {
             for (int h = 0; h < 3; h++) {
                 Location blockLoc = front.clone()
@@ -232,33 +233,15 @@ public class FrameEffectListener implements Listener {
                         .add(0, h, 0);
                 Block block = blockLoc.getBlock();
                 if (block.getType() == Material.AIR || block.getType() == Material.CAVE_AIR) {
-                    block.setType(Material.BARRIER);
-                    barrierBlocks.add(blockLoc.clone());
+                    block.setType(Material.GLASS);
                 }
             }
         }
 
         // Visual effect
-        player.getWorld().playSound(front, Sound.BLOCK_ANVIL_PLACE, 0.8f, 1.5f);
+        player.getWorld().playSound(front, Sound.BLOCK_GLASS_PLACE, 1.0f, 1.0f);
 
-        // Remove barriers after 4 seconds
-        if (!barrierBlocks.isEmpty()) {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    for (Location bl : barrierBlocks) {
-                        if (bl.getBlock().getType() == Material.BARRIER) {
-                            bl.getBlock().setType(Material.AIR);
-                            bl.getWorld().spawnParticle(Particle.BLOCK_CRUMBLE,
-                                    bl.clone().add(0.5, 0.5, 0.5), 5,
-                                    new ItemStack(Material.GLASS).getType().createBlockData());
-                        }
-                    }
-                }
-            }.runTaskLater(BRBPlugin.getInstance(), 80L); // 4 seconds = 80 ticks
-        }
-
-        MessageUtil.sendInfo(player, "§6Vant §7発動！ 障壁生成（4秒）。");
+        MessageUtil.sendInfo(player, "§6Vant §7発動！ ガラス壁生成。");
     }
 
     // ========== BLAST ==========
@@ -272,76 +255,101 @@ public class FrameEffectListener implements Listener {
             return;
         }
 
-        // Create explosion at the location player is looking at (max 10 blocks away)
-        Location origin = player.getEyeLocation();
-        Vector direction = origin.getDirection().normalize();
+        // Throw a snowball projectile (explosion handled in CombatListener.onProjectileHit)
+        org.bukkit.entity.Snowball snowball = player.launchProjectile(org.bukkit.entity.Snowball.class);
+        snowball.setCustomName("brb_blast");
+        snowball.setVelocity(player.getLocation().getDirection().multiply(1.5));
 
-        RayTraceResult rayResult = player.getWorld().rayTraceBlocks(
-                origin, direction, 10.0, FluidCollisionMode.NEVER, true);
-
-        Location explosionLoc;
-        if (rayResult != null && rayResult.getHitPosition() != null) {
-            explosionLoc = rayResult.getHitPosition().toLocation(player.getWorld());
-        } else {
-            explosionLoc = origin.clone().add(direction.multiply(10.0));
-        }
-
-        // Create explosion (no block damage, but player damage)
-        player.getWorld().createExplosion(explosionLoc, 0f, false, false); // Visual only
-        // Apply damage to nearby players (radius 5.0, damage 6.0)
-        double radius = 5.0;
-        double maxDamage = 6.0;
-        for (Player target : player.getWorld().getPlayers()) {
-            if (target.equals(player)) continue;
-            if (!etherManager.isTracking(target.getUniqueId())) continue;
-
-            // Check friendly fire
-            if (queueManager != null) {
-                ArenaInstance match = queueManager.getPlayerMatch(uuid);
-                if (match != null && match.isTeammate(uuid, target.getUniqueId())) continue;
-            }
-
-            double distance = target.getLocation().distance(explosionLoc);
-            if (distance <= radius) {
-                // Damage scales with distance (closer = more damage)
-                double damageScale = 1.0 - (distance / radius);
-                double damage = maxDamage * damageScale;
-                target.damage(damage, player);
-
-                // Track damage for judge scoring
-                if (queueManager != null) {
-                    ArenaInstance match = queueManager.getPlayerMatch(uuid);
-                    if (match != null) {
-                        match.addDamageDealt(uuid, damage);
-                    }
-                }
-            }
-        }
-
-        // Visual effects
-        player.getWorld().playSound(explosionLoc, Sound.ENTITY_GENERIC_EXPLODE, 1.5f, 0.8f);
-        player.getWorld().spawnParticle(Particle.EXPLOSION, explosionLoc, 3, 1.0, 1.0, 1.0, 0);
-
-        MessageUtil.sendInfo(player, "§cBlast §7発動！");
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_SNOWBALL_THROW, 1.0f, 0.8f);
+        MessageUtil.sendInfo(player, "§cBlast §7投擲！");
     }
 
-    // ========== BASTION (shield toggle) ==========
+    // ========== BASTION (F-key swap: sword ⇔ shield) ==========
 
-    private void handleBastionToggle(Player player, FrameData frame, PlayerInteractEvent event) {
-        event.setCancelled(true);
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onPlayerSwapHand(PlayerSwapHandItemsEvent event) {
+        Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
+        if (!etherManager.isTracking(uuid)) return;
 
-        if (bastionShieldActive.contains(uuid)) {
-            // Deactivate shield mode
-            bastionShieldActive.remove(uuid);
-            player.getWorld().playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK, 0.8f, 1.0f);
-            MessageUtil.sendInfo(player, "§7Bastion シールドモード §c解除");
-        } else {
-            // Activate shield mode
+        // Check if the item being swapped TO offhand is Bastion
+        ItemStack mainHandItem = event.getMainHandItem(); // item going to main hand
+        ItemStack offHandItem = event.getOffHandItem();   // item going to offhand
+
+        // Case 1: Bastion sword going to offhand → convert to shield (activate)
+        String offHandFrameId = getFrameIdFromItem(offHandItem);
+        if ("bastion".equals(offHandFrameId) && !bastionShieldActive.contains(uuid)) {
+            event.setCancelled(true);
+
+            // Convert main hand sword to shield in offhand
+            FrameData bastionFrame = frameRegistry.getFrame("bastion");
+            ItemStack shield = createBastionShield(bastionFrame);
+            player.getInventory().setItemInOffHand(shield);
+            player.getInventory().setItemInMainHand(null);
+
+            // Find the original hotbar slot and clear it
             bastionShieldActive.add(uuid);
             player.getWorld().playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, 0.8f, 1.0f);
             MessageUtil.sendInfo(player, "§7Bastion シールドモード §a発動 §8(攻撃力半減・被ダメ60%カット)");
+            return;
         }
+
+        // Case 2: Bastion shield in offhand going back to main hand → convert to sword (deactivate)
+        String mainHandFrameId = getFrameIdFromItem(mainHandItem);
+        if ("bastion".equals(mainHandFrameId) && bastionShieldActive.contains(uuid)) {
+            event.setCancelled(true);
+
+            // Convert offhand shield back to sword in main hand
+            FrameData bastionFrame = frameRegistry.getFrame("bastion");
+            ItemStack sword = createBastionSword(bastionFrame);
+            player.getInventory().setItemInMainHand(sword);
+            player.getInventory().setItemInOffHand(null);
+
+            bastionShieldActive.remove(uuid);
+            player.getWorld().playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK, 0.8f, 1.0f);
+            MessageUtil.sendInfo(player, "§7Bastion シールドモード §c解除");
+        }
+    }
+
+    private ItemStack createBastionShield(FrameData frame) {
+        ItemStack shield = new ItemStack(Material.SHIELD);
+        ItemMeta meta = shield.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§7§lBastion §8[シールド]");
+            List<String> lore = new ArrayList<>();
+            lore.add("§7攻撃力半減・被ダメ60%カット");
+            lore.add("§7Fキーで剣に戻す");
+            lore.add("§8§oBRB Frame");
+            meta.setLore(lore);
+            meta.setUnbreakable(true);
+            meta.getPersistentDataContainer().set(FrameCommand.FRAME_KEY, PersistentDataType.STRING, "bastion");
+            shield.setItemMeta(meta);
+        }
+        return shield;
+    }
+
+    private ItemStack createBastionSword(FrameData frame) {
+        ItemStack sword = new ItemStack(Material.IRON_SWORD);
+        ItemMeta meta = sword.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§7§lBastion §8[剣]");
+            List<String> lore = new ArrayList<>();
+            lore.add("§7" + frame.getDescription());
+            lore.add("§7Fキーでシールドに切替");
+            lore.add("§8§oBRB Frame");
+            meta.setLore(lore);
+            meta.setUnbreakable(true);
+            meta.getPersistentDataContainer().set(FrameCommand.FRAME_KEY, PersistentDataType.STRING, "bastion");
+            sword.setItemMeta(meta);
+        }
+        return sword;
+    }
+
+    private String getFrameIdFromItem(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return null;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return null;
+        return meta.getPersistentDataContainer().get(FrameCommand.FRAME_KEY, PersistentDataType.STRING);
     }
 
     // ========== CLOAK (toggle) ==========
@@ -353,13 +361,17 @@ public class FrameEffectListener implements Listener {
         if (etherManager.isSustainActive(uuid, "cloak")) {
             // Deactivate
             etherManager.deactivateSustain(uuid, "cloak");
+            player.removePotionEffect(PotionEffectType.INVISIBILITY);
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 0.8f, 0.8f);
             MessageUtil.sendInfo(player, "§7Cloak §c解除");
         } else {
             // Activate
             etherManager.activateSustain(uuid, frame);
+            // Apply invisibility (infinite duration, removed on deactivate)
+            player.addPotionEffect(new PotionEffect(
+                    PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 0, false, false, false));
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 0.8f, 1.2f);
-            MessageUtil.sendInfo(player, "§7Cloak §a発動 §8(被ダメ60%カット, 15エーテル/秒)");
+            MessageUtil.sendInfo(player, "§7Cloak §a発動 §8(透明化・被ダメ60%カット, 15エーテル/秒)");
         }
     }
 

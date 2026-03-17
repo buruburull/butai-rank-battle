@@ -12,6 +12,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -74,9 +75,18 @@ public class FrameCommand implements CommandExecutor, TabCompleter {
             lore.add("§8§oBRB Frame");
             meta.setLore(lore);
 
+            // All frame items are unbreakable
+            meta.setUnbreakable(true);
+
             meta.getPersistentDataContainer().set(FRAME_KEY, PersistentDataType.STRING, frameData.getId());
             item.setItemMeta(meta);
         }
+
+        // Seeker (Trident): add Loyalty enchantment so it returns
+        if ("TRIDENT".equals(frameData.getMcItem())) {
+            item.addUnsafeEnchantment(Enchantment.LOYALTY, 3);
+        }
+
         return item;
     }
 
