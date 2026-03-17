@@ -24,10 +24,10 @@ frames:
     mc_item: GOLDEN_SWORD
     damage: 5
     damage_multiplier: 1.0
-    ether_use: 0
+    ether_use: 15
     ether_sustain: 0
-    cooldown: 0
-    description: "背面攻撃1.5倍（合計2.25倍）。暗殺型フレーム。"
+    cooldown: 6
+    description: "背面攻撃1.5倍。右クリックで3秒間移動速度UP。暗殺型。"
 
   bastion:
     name: "Bastion"

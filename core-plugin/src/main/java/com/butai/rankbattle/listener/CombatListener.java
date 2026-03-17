@@ -483,6 +483,9 @@ public class CombatListener implements Listener {
                     if (candidate.getUniqueId().equals(shooter.getUniqueId())) continue;
                     if (!etherManager.isTracking(candidate.getUniqueId())) continue;
 
+                    // Skip invisible (Cloak) players
+                    if (candidate.hasPotionEffect(PotionEffectType.INVISIBILITY)) continue;
+
                     // Check friendly fire
                     if (queueManager != null) {
                         ArenaInstance match = queueManager.getPlayerMatch(shooter.getUniqueId());

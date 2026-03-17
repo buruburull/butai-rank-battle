@@ -101,6 +101,7 @@ public class FrameEffectListener implements Listener {
         if (frame == null) return;
 
         switch (frame.getId()) {
+            case "fang" -> handleFangSpeed(player, frame, event);
             case "leap" -> handleLeap(player, frame, event);
             case "warp" -> handleWarp(player, frame, event);
             case "vant" -> handleVant(player, frame, event);
@@ -108,6 +109,34 @@ public class FrameEffectListener implements Listener {
             case "cloak" -> handleCloakToggle(player, frame, event);
             case "tracer" -> handleTracer(player, frame, event);
         }
+    }
+
+    // ========== FANG (speed boost) ==========
+
+    private void handleFangSpeed(Player player, FrameData frame, PlayerInteractEvent event) {
+        event.setCancelled(true);
+        UUID uuid = player.getUniqueId();
+
+        if (isOnCooldown(uuid, frame.getId())) {
+            long remaining = getCooldownRemaining(uuid, frame.getId());
+            MessageUtil.sendError(player, "クールタイム中！ (残り" + remaining + "秒)");
+            return;
+        }
+
+        if (!etherManager.consumeUse(uuid, frame)) {
+            MessageUtil.sendError(player, "エーテル不足！ (必要: " + frame.getEtherUse() + ")");
+            return;
+        }
+
+        // Speed II for 3 seconds (60 ticks)
+        player.addPotionEffect(new PotionEffect(
+                PotionEffectType.SPEED, 60, 1, false, true, true));
+
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.0f, 1.5f);
+        player.getWorld().spawnParticle(Particle.SWEEP_ATTACK, player.getLocation().add(0, 1, 0), 5, 0.5, 0.3, 0.5, 0);
+
+        setCooldown(uuid, frame.getId(), frame.getCooldown());
+        MessageUtil.sendInfo(player, "§6Fang §7加速発動！（3秒）");
     }
 
     // ========== LEAP ==========
