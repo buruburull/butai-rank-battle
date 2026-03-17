@@ -254,6 +254,9 @@ public class FrameEffectListener implements Listener {
         Location front = loc.clone().add(direction.clone().multiply(2));
         front.setY(Math.floor(front.getY()));
 
+        // Get ArenaInstance for block tracking
+        ArenaInstance arena = queueManager.getPlayerMatch(uuid);
+
         // Place 3 wide x 3 tall glass wall
         for (int w = -1; w <= 1; w++) {
             for (int h = 0; h < 3; h++) {
@@ -262,6 +265,10 @@ public class FrameEffectListener implements Listener {
                         .add(0, h, 0);
                 Block block = blockLoc.getBlock();
                 if (block.getType() == Material.AIR || block.getType() == Material.CAVE_AIR) {
+                    // Track original state for restoration after match
+                    if (arena != null) {
+                        arena.trackBlockChange(blockLoc, block.getState());
+                    }
                     block.setType(Material.GLASS);
                 }
             }
