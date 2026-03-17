@@ -503,10 +503,14 @@ public class CombatListener implements Listener {
                 if (nearestEnemy != null) {
                     // Adjust trajectory toward target (gentle curve)
                     Vector toTarget = nearestEnemy.getLocation().add(0, 1, 0).toVector()
-                            .subtract(projLoc.toVector()).normalize();
+                            .subtract(projLoc.toVector());
                     Vector currentVel = projectile.getVelocity();
                     double speed = currentVel.length();
 
+                    // Skip if speed or distance is near zero (avoid NaN from normalize)
+                    if (speed < 0.01 || toTarget.lengthSquared() < 0.01) return;
+
+                    toTarget.normalize();
                     Vector newVel = currentVel.normalize().multiply(0.8)
                             .add(toTarget.multiply(0.2)).normalize().multiply(speed);
                     projectile.setVelocity(newVel);
