@@ -519,7 +519,7 @@ public class CombatListener implements Listener {
                     projLoc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, projLoc, 1, 0, 0, 0, 0);
                 }
             }
-        }.runTaskTimer(BRBPlugin.getInstance(), 2L, 2L);
+        }.runTaskTimer(BRBPlugin.getInstance(), 2L, 1L);
     }
 
     /**
