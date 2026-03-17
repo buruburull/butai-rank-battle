@@ -474,9 +474,9 @@ public class CombatListener implements Listener {
                     return;
                 }
 
-                // Find nearest enemy within 20 blocks
+                // Find nearest enemy within 14 blocks
                 Player nearestEnemy = null;
-                double nearestDist = 20.0;
+                double nearestDist = 14.0;
                 Location projLoc = projectile.getLocation();
 
                 for (Player candidate : projLoc.getWorld().getPlayers()) {
@@ -507,15 +507,15 @@ public class CombatListener implements Listener {
                     Vector currentVel = projectile.getVelocity();
                     double speed = currentVel.length();
 
-                    Vector newVel = currentVel.normalize().multiply(0.7)
-                            .add(toTarget.multiply(0.3)).normalize().multiply(speed);
+                    Vector newVel = currentVel.normalize().multiply(0.8)
+                            .add(toTarget.multiply(0.2)).normalize().multiply(speed);
                     projectile.setVelocity(newVel);
 
                     // Trail particle
                     projLoc.getWorld().spawnParticle(Particle.SOUL_FIRE_FLAME, projLoc, 1, 0, 0, 0, 0);
                 }
             }
-        }.runTaskTimer(BRBPlugin.getInstance(), 2L, 1L);
+        }.runTaskTimer(BRBPlugin.getInstance(), 2L, 2L);
     }
 
     /**

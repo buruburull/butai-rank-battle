@@ -72,7 +72,7 @@ frames:
     ether_use: 15
     ether_sustain: 0
     cooldown: 0
-    description: "ホーミング射撃（射程20.0）。追尾型。"
+    description: "ホーミング射撃（射程14.0）。追尾型。"
 
   frost:
     name: "Frost"
