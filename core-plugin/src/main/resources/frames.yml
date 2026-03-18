@@ -340,15 +340,15 @@ growth_zones:
   mob_tower:
     world: world
     spawn:
-      x: 183.27
-      y: 104.00
-      z: -16.80
+      x: 134.47
+      y: 65.00
+      z: 61.55
       yaw: 0.0
     mob_spawn:
-      x: 193.29
-      y: 104.00
-      z: -23.47
-      radius: 8
+      x: 134.47
+      y: 65.00
+      z: 61.55
+      radius: 20
     max_mobs: 10
     spawn_interval_seconds: 5
 
@@ -385,9 +385,9 @@ growth_npcs:
   # 退出NPC（MOBタワー内に配置）
   mob_tower_exit:
     world: world
-    x: 185.50
-    y: 104.00
-    z: -8.47
+    x: 152.46
+    y: 66.00
+    z: 57.54
     yaw: 180.0
     name: "§e§lロビーへ戻る"
     subtitle: "§7右クリックで退出"
