@@ -5,6 +5,7 @@ import com.butai.rankbattle.manager.EtherGrowthManager;
 import com.butai.rankbattle.manager.LobbyManager;
 import com.butai.rankbattle.manager.MineManager;
 import com.butai.rankbattle.util.MessageUtil;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Entity;
@@ -80,6 +81,7 @@ public class LobbyListener implements Listener {
 
         if (target != null) {
             player.teleport(target);
+            player.setGameMode(GameMode.SURVIVAL);
 
             // Give iron pickaxe for mine
             if ("mine".equals(destination)) {

@@ -30,6 +30,19 @@ public class EtherGrowthListener implements Listener {
     }
 
     /**
+     * Block all non-ore block breaking in mine zone.
+     */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onBlockBreakProtection(BlockBreakEvent event) {
+        Location blockLoc = event.getBlock().getLocation();
+
+        // If in mine zone but NOT a registered ore → cancel
+        if (mineManager.isInMineZone(blockLoc) && !mineManager.isRegisteredOre(blockLoc)) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
      * Handle ore mining in the mine zone.
      */
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)

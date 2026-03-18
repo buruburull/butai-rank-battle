@@ -8,7 +8,9 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -111,7 +113,11 @@ public class EtherGrowthManager {
      * Start the MOB auto-spawn loop.
      */
     public void startMobSpawner() {
-        if (mobSpawnTask != null || mobSpawnCenter == null) return;
+        if (mobSpawnTask != null) return;
+        if (mobSpawnCenter == null) {
+            logger.warning("MOB spawner not started: mobSpawnCenter is null (config not loaded?)");
+            return;
+        }
 
         mobSpawnTask = new BukkitRunnable() {
             @Override
@@ -167,7 +173,12 @@ public class EtherGrowthManager {
         Location spawnLoc = mobSpawnCenter.clone().add(offsetX, 0, offsetZ);
 
         EntityType type = mobTypes.get(rand.nextInt(mobTypes.size()));
-        world.spawnEntity(spawnLoc, type);
+        Entity spawned = world.spawnEntity(spawnLoc, type);
+        // Prevent natural despawning
+        if (spawned instanceof Mob mob) {
+            mob.setPersistent(true);
+            mob.setRemoveWhenFarAway(false);
+        }
     }
 
     /**

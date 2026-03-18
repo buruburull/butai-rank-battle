@@ -46,6 +46,7 @@ public class MineManager {
     // Mine zone bounds
     private Location mineSpawn;
     private int regenDelayTicks = 600; // 30 seconds default
+    private static final int MINE_PROTECTION_RADIUS = 50; // blocks
 
     public MineManager(JavaPlugin plugin, Logger logger) {
         this.plugin = plugin;
@@ -170,6 +171,15 @@ public class MineManager {
 
     public Map<Location, Material> getOreLocations() {
         return Collections.unmodifiableMap(oreLocations);
+    }
+
+    /**
+     * Check if a location is within the mine protection zone.
+     */
+    public boolean isInMineZone(Location loc) {
+        if (mineSpawn == null) return false;
+        if (!Objects.equals(loc.getWorld(), mineSpawn.getWorld())) return false;
+        return loc.distanceSquared(mineSpawn) <= MINE_PROTECTION_RADIUS * MINE_PROTECTION_RADIUS;
     }
 
     /**
