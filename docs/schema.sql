@@ -283,6 +283,26 @@ INSERT IGNORE INTO seasons (season_name, start_date, end_date, is_active) VALUES
 ('Season 1', '2026-01-01 00:00:00', NULL, TRUE);
 
 -- ============================================
+-- ETHER GROWTH TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS ether_growth (
+    uuid CHAR(36) NOT NULL COMMENT 'Player UUID',
+    season_id INT NOT NULL COMMENT 'Season this growth belongs to',
+    ep_total INT NOT NULL DEFAULT 0 COMMENT 'Total ether points earned this season',
+    growth_level INT NOT NULL DEFAULT 0 COMMENT 'Current growth level (0-40)',
+    ore_mined INT NOT NULL DEFAULT 0 COMMENT 'Total ores mined this season',
+    mob_killed INT NOT NULL DEFAULT 0 COMMENT 'Total mobs killed this season',
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (uuid, season_id),
+    FOREIGN KEY (uuid) REFERENCES players(uuid) ON DELETE CASCADE,
+    FOREIGN KEY (season_id) REFERENCES seasons(season_id) ON DELETE CASCADE,
+    INDEX idx_growth_level (growth_level),
+    INDEX idx_ep_total (ep_total)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Per-player ether growth progress per season';
+
+-- ============================================
 -- COMPOSITE INDEXES
 -- ============================================
 ALTER TABLE match_results ADD INDEX idx_match_uuid (match_id, uuid);

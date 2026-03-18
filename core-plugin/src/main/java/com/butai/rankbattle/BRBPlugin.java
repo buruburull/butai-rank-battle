@@ -1,6 +1,7 @@
 package com.butai.rankbattle;
 
 import com.butai.rankbattle.database.DatabaseManager;
+import com.butai.rankbattle.database.EtherGrowthDAO;
 import com.butai.rankbattle.database.FrameSetDAO;
 import com.butai.rankbattle.database.MatchHistoryDAO;
 import com.butai.rankbattle.database.PlayerDAO;
@@ -13,13 +14,16 @@ import com.butai.rankbattle.command.TeamCommand;
 import com.butai.rankbattle.listener.ChatTabListener;
 import com.butai.rankbattle.listener.CombatListener;
 import com.butai.rankbattle.listener.BlockChangeListener;
+import com.butai.rankbattle.listener.EtherGrowthListener;
 import com.butai.rankbattle.listener.FrameEffectListener;
 import com.butai.rankbattle.listener.LobbyListener;
 import com.butai.rankbattle.listener.PlayerConnectionListener;
+import com.butai.rankbattle.manager.EtherGrowthManager;
 import com.butai.rankbattle.manager.EtherManager;
 import com.butai.rankbattle.manager.FrameRegistry;
 import com.butai.rankbattle.manager.FrameSetManager;
 import com.butai.rankbattle.manager.LobbyManager;
+import com.butai.rankbattle.manager.MineManager;
 import com.butai.rankbattle.manager.QueueManager;
 import com.butai.rankbattle.manager.RankManager;
 import org.bukkit.Location;
@@ -51,6 +55,8 @@ public class BRBPlugin extends JavaPlugin {
     private FrameCommand frameCommand;
     private FrameEffectListener frameEffectListener;
     private ChatTabListener chatTabListener;
+    private EtherGrowthManager etherGrowthManager;
+    private MineManager mineManager;
 
     public static BRBPlugin getInstance() {
         return instance;
@@ -142,8 +148,22 @@ public class BRBPlugin extends JavaPlugin {
             teamCmdObj.setTabCompleter(teamCommand);
         }
 
-        AdminCommand adminCommand = new AdminCommand(rankManager, queueManager, frameRegistry);
+        // Initialize Ether Growth System
+        EtherGrowthDAO etherGrowthDAO = new EtherGrowthDAO(databaseManager, log);
+        etherGrowthDAO.createTableIfNotExists();
         SeasonDAO seasonDAO = new SeasonDAO(databaseManager, log);
+
+        mineManager = new MineManager(this, log);
+        mineManager.loadConfig(framesConfig);
+
+        etherGrowthManager = new EtherGrowthManager(this, log, etherGrowthDAO, seasonDAO);
+        etherGrowthManager.loadConfig(framesConfig);
+        etherGrowthManager.startMobSpawner();
+
+        // Place ores in mine zone
+        mineManager.placeAllOres();
+
+        AdminCommand adminCommand = new AdminCommand(rankManager, queueManager, frameRegistry);
         adminCommand.setSeasonDAO(seasonDAO);
         PluginCommand adminCmdObj = getCommand("bradmin");
         if (adminCmdObj != null) {
@@ -168,6 +188,8 @@ public class BRBPlugin extends JavaPlugin {
                 new com.butai.rankbattle.gui.FrameSetGUIListener(
                         frameSetGUI, frameSetManager, frameRegistry, frameCommand), this);
         getServer().getPluginManager().registerEvents(new BlockChangeListener(queueManager), this);
+        getServer().getPluginManager().registerEvents(
+                new EtherGrowthListener(etherGrowthManager, mineManager), this);
         chatTabListener = new ChatTabListener(rankManager);
         getServer().getPluginManager().registerEvents(chatTabListener, this);
 
@@ -186,6 +208,12 @@ public class BRBPlugin extends JavaPlugin {
         // Stop queue checker
         if (queueManager != null) {
             queueManager.stopQueueChecker();
+        }
+
+        // Save and stop ether growth
+        if (etherGrowthManager != null) {
+            etherGrowthManager.saveAll();
+            etherGrowthManager.stopMobSpawner();
         }
 
         // Stop ether tick loop
@@ -251,5 +279,13 @@ public class BRBPlugin extends JavaPlugin {
 
     public MatchHistoryDAO getMatchHistoryDAO() {
         return matchHistoryDAO;
+    }
+
+    public EtherGrowthManager getEtherGrowthManager() {
+        return etherGrowthManager;
+    }
+
+    public MineManager getMineManager() {
+        return mineManager;
     }
 }

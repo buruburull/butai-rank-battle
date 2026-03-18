@@ -136,6 +136,17 @@ public class SeasonDAO {
     }
 
     /**
+     * Reset ether growth for a new season.
+     * EP/level progress resets, but ether_cap in players table is preserved (carried over).
+     * Growth data from the ended season stays as historical record.
+     */
+    public void resetGrowthForNewSeason() {
+        // No deletion needed - new season automatically creates new ether_growth rows.
+        // The old season's data remains as history (keyed by season_id).
+        logger.info("Growth data will reset for new season (new rows will be created on player login).");
+    }
+
+    /**
      * Check if a season name already exists.
      */
     public boolean seasonNameExists(String name) {

@@ -32,6 +32,7 @@ import java.util.logging.Logger;
 public class LobbyManager {
 
     public static final NamespacedKey NPC_KEY = new NamespacedKey("butairankbattle", "npc_command");
+    public static final NamespacedKey GROWTH_TELEPORT_KEY = new NamespacedKey("butairankbattle", "growth_teleport");
     public static final NamespacedKey HOLOGRAM_KEY = new NamespacedKey("butairankbattle", "hologram_type");
 
     private final BRBPlugin plugin;
@@ -69,6 +70,7 @@ public class LobbyManager {
             public void run() {
                 cleanupOldEntities();
                 spawnNPCs();
+                spawnGrowthNPCs();
                 spawnHolograms();
                 startActionBarLoop();
                 startRankingUpdateLoop();
@@ -259,6 +261,64 @@ public class LobbyManager {
             }
 
             logger.info("NPC spawned: " + key + " at " + locToString(loc));
+        }
+    }
+
+    /**
+     * Spawn Growth Zone NPCs (mine, mob tower) with teleport PDC tag.
+     */
+    private void spawnGrowthNPCs() {
+        ConfigurationSection section = framesConfig.getConfigurationSection("growth_npcs");
+        if (section == null) return;
+
+        for (String key : section.getKeys(false)) {
+            ConfigurationSection npc = section.getConfigurationSection(key);
+            if (npc == null) continue;
+
+            String worldName = npc.getString("world", "world");
+            World world = Bukkit.getWorld(worldName);
+            if (world == null) continue;
+
+            double x = npc.getDouble("x");
+            double y = npc.getDouble("y");
+            double z = npc.getDouble("z");
+            float yaw = (float) npc.getDouble("yaw", 0.0);
+            String name = npc.getString("name", key);
+            String subtitle = npc.getString("subtitle", "");
+            String teleportTo = npc.getString("teleport_to", "");
+
+            Location loc = new Location(world, x, y, z, yaw, 0f);
+
+            Villager villager = (Villager) world.spawnEntity(loc, EntityType.VILLAGER);
+            villager.setCustomName(null);
+            villager.setCustomNameVisible(false);
+            villager.setAI(false);
+            villager.setInvulnerable(true);
+            villager.setSilent(true);
+            villager.setCollidable(false);
+            villager.setProfession(Villager.Profession.NONE);
+            villager.setVillagerType(Villager.Type.PLAINS);
+
+            // Store teleport destination in PDC
+            villager.getPersistentDataContainer().set(GROWTH_TELEPORT_KEY, PersistentDataType.STRING, teleportTo);
+            // Also set NPC_KEY so cleanup recognizes it
+            villager.getPersistentDataContainer().set(NPC_KEY, PersistentDataType.STRING, "");
+
+            spawnedNPCs.add(villager.getUniqueId());
+
+            if (!subtitle.isEmpty()) {
+                TextDisplay td = (TextDisplay) world.spawnEntity(
+                        loc.clone().add(0, 2.3, 0), EntityType.TEXT_DISPLAY);
+                td.setText(name + "\n" + subtitle);
+                td.setBillboard(Display.Billboard.CENTER);
+                td.setAlignment(TextDisplay.TextAlignment.CENTER);
+                td.setSeeThrough(false);
+                td.setShadowed(true);
+                td.getPersistentDataContainer().set(HOLOGRAM_KEY, PersistentDataType.STRING, "npc_label");
+                spawnedHolograms.add(td.getUniqueId());
+            }
+
+            logger.info("Growth NPC spawned: " + key + " → " + teleportTo);
         }
     }
 

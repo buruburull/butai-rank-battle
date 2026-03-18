@@ -38,6 +38,9 @@ public class PlayerConnectionListener implements Listener {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             BRBPlayer brbPlayer = rankManager.loadPlayer(player.getUniqueId(), player.getName());
             frameSetManager.loadPlayer(player.getUniqueId());
+            if (plugin.getEtherGrowthManager() != null) {
+                plugin.getEtherGrowthManager().loadPlayer(player.getUniqueId());
+            }
 
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (player.isOnline()) {
@@ -84,9 +87,12 @@ public class PlayerConnectionListener implements Listener {
             }
         }
 
-        // Save frameset async, then unload
+        // Save frameset and growth data async, then unload
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             frameSetManager.unloadPlayer(player.getUniqueId());
+            if (plugin.getEtherGrowthManager() != null) {
+                plugin.getEtherGrowthManager().unloadPlayer(player.getUniqueId());
+            }
         });
         rankManager.unloadPlayer(player.getUniqueId());
     }

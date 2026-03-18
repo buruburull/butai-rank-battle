@@ -201,6 +201,11 @@ public class ArenaInstance {
             if (wt != null) {
                 playerWeaponTypes.put(uuid, wt);
             }
+            // Set player-specific ether cap from growth system
+            if (plugin.getEtherGrowthManager() != null) {
+                int cap = plugin.getEtherGrowthManager().getEtherCap(uuid);
+                etherManager.setMaxEther(uuid, cap);
+            }
             etherManager.initPlayer(uuid);
         }
 

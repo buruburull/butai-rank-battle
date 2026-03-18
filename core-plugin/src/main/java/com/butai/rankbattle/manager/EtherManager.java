@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  */
 public class EtherManager {
 
-    private static final int MAX_ETHER = 1000;
+    private static final int DEFAULT_MAX_ETHER = 1000;
     private static final double DEFAULT_LEAK_COEFFICIENT = 0.5;
     private static final int WARNING_YELLOW = 200;
     private static final int WARNING_RED = 100;
@@ -35,6 +35,9 @@ public class EtherManager {
 
     private final JavaPlugin plugin;
     private final Logger logger;
+
+    // Per-player max ether (dynamic, based on growth)
+    private final Map<UUID, Integer> maxEtherMap = new ConcurrentHashMap<>();
 
     // Player ether state
     private final Map<UUID, Integer> etherMap = new ConcurrentHashMap<>();
@@ -83,17 +86,25 @@ public class EtherManager {
     }
 
     /**
+     * Set a player's max ether (call before initPlayer, based on growth level).
+     */
+    public void setMaxEther(UUID uuid, int maxEther) {
+        maxEtherMap.put(uuid, maxEther);
+    }
+
+    /**
      * Initialize a player's ether at match start.
      */
     public void initPlayer(UUID uuid) {
-        etherMap.put(uuid, MAX_ETHER);
+        int maxEther = getMaxEther(uuid);
+        etherMap.put(uuid, maxEther);
         activeSustains.put(uuid, new ConcurrentHashMap<>());
         eShifted.remove(uuid);
         blinkCounter.put(uuid, 0);
 
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
-            updateXpBar(player, MAX_ETHER);
+            updateXpBar(player, maxEther, uuid);
         }
     }
 
@@ -102,6 +113,7 @@ public class EtherManager {
      */
     public void removePlayer(UUID uuid) {
         etherMap.remove(uuid);
+        maxEtherMap.remove(uuid);
         activeSustains.remove(uuid);
         eShifted.remove(uuid);
         blinkCounter.remove(uuid);
@@ -156,7 +168,7 @@ public class EtherManager {
 
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
-            updateXpBar(player, newEther);
+            updateXpBar(player, newEther, uuid);
         }
 
         if (newEther <= 0) {
@@ -255,7 +267,7 @@ public class EtherManager {
             }
 
             // Update XP bar
-            updateXpBar(player, currentEther);
+            updateXpBar(player, currentEther, uuid);
 
             // Warnings
             if (currentEther <= 0) {
@@ -313,9 +325,10 @@ public class EtherManager {
      * Update the XP bar to reflect ether amount.
      * Level number = ether amount, bar = percentage.
      */
-    private void updateXpBar(Player player, int ether) {
+    private void updateXpBar(Player player, int ether, UUID uuid) {
         player.setLevel(ether);
-        player.setExp(Math.max(0f, Math.min(1f, (float) ether / MAX_ETHER)));
+        int maxEther = getMaxEther(uuid);
+        player.setExp(Math.max(0f, Math.min(1f, (float) ether / maxEther)));
     }
 
     /**
@@ -333,10 +346,17 @@ public class EtherManager {
     }
 
     /**
-     * Get the maximum ether value.
+     * Get the maximum ether value for a player.
      */
-    public int getMaxEther() {
-        return MAX_ETHER;
+    public int getMaxEther(UUID uuid) {
+        return maxEtherMap.getOrDefault(uuid, DEFAULT_MAX_ETHER);
+    }
+
+    /**
+     * Get the default max ether (for non-growth contexts).
+     */
+    public int getDefaultMaxEther() {
+        return DEFAULT_MAX_ETHER;
     }
 
     /**

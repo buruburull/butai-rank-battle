@@ -263,6 +263,18 @@
 - [x] FrameEffectListener新規作成（右クリック発動系フレーム）
 - [x] CombatListener拡張（Nova爆発、Volt貫通、Falcon/Zenithチャージ、Bastion被ダメ）
 
+### 26. エーテル成長システム（完了）
+- [x] ether_growthテーブル追加（schema.sql）
+- [x] EtherGrowthDAO.java（EP/レベル/エーテル上限のDB永続化）
+- [x] MineManager.java（鉱石座標管理、丸石化→時間経過で再生）
+- [x] EtherGrowthManager.java（EP計算、レベルアップ判定、MOBスポーン管理）
+- [x] EtherGrowthListener.java（BlockBreakEvent/EntityDeathEventでEP獲得）
+- [x] EtherManager.java修正（MAX_ETHER→プレイヤー別動的上限）
+- [x] frames.yml（鉱山・MOBタワー座標設定、Growth NPC追加）
+- [x] LobbyManager/LobbyListener（Growth NPCスポーン・テレポート処理）
+- [x] PlayerConnectionListener（growth load/unload）
+- [x] game-spec.md仕様反映
+
 ## Phase 2以降（参考）
 
 - [ ] シーズン報酬システム
@@ -275,4 +287,4 @@
 
 ---
 
-*最終更新: 2026-03-16*
+*最終更新: 2026-03-18*
