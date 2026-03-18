@@ -6,9 +6,11 @@ import com.butai.rankbattle.manager.LobbyManager;
 import com.butai.rankbattle.manager.MineManager;
 import com.butai.rankbattle.util.MessageUtil;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -64,8 +66,28 @@ public class LobbyListener implements Listener {
             }
         }
 
+        if ("lobby".equals(destination)) {
+            // Return to lobby
+            LobbyManager lobbyManager = plugin.getLobbyManager();
+            if (lobbyManager != null) {
+                lobbyManager.sendToLobby(player);
+            }
+            // Remove pickaxe when returning
+            player.getInventory().remove(Material.IRON_PICKAXE);
+            MessageUtil.sendInfo(player, "§7ロビーに戻りました。");
+            return;
+        }
+
         if (target != null) {
             player.teleport(target);
+
+            // Give iron pickaxe for mine
+            if ("mine".equals(destination)) {
+                if (!player.getInventory().contains(Material.IRON_PICKAXE)) {
+                    player.getInventory().addItem(new ItemStack(Material.IRON_PICKAXE));
+                }
+            }
+
             EtherGrowthManager gm = plugin.getEtherGrowthManager();
             if (gm != null) {
                 int level = gm.getGrowthLevel(player.getUniqueId());

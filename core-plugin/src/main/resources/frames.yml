@@ -372,6 +372,26 @@ growth_npcs:
     name: "§c§lMOBタワー"
     subtitle: "§7右クリックでテレポート"
     teleport_to: "mob_tower"
+  # 退出NPC（鉱山内に配置）
+  mine_exit:
+    world: world
+    x: 113.50
+    y: 45.00
+    z: 66.50
+    yaw: 180.0
+    name: "§e§lロビーへ戻る"
+    subtitle: "§7右クリックで退出"
+    teleport_to: "lobby"
+  # 退出NPC（MOBタワー内に配置）
+  mob_tower_exit:
+    world: world
+    x: 185.50
+    y: 104.00
+    z: -8.47
+    yaw: 180.0
+    name: "§e§lロビーへ戻る"
+    subtitle: "§7右クリックで退出"
+    teleport_to: "lobby"
 
 # ========== ARENA MAP SETTINGS ==========
 

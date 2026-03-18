@@ -51,10 +51,11 @@ public class EtherGrowthListener implements Listener {
         int ep = mineManager.getOreEP(material);
         if (ep <= 0) return;
 
-        // Cancel default drop (we don't want actual ore items)
-        event.setDropItems(false);
+        // Cancel the break event entirely (prevent AIR replacement)
+        // Then manually convert to cobblestone via onOreMined
+        event.setCancelled(true);
 
-        // Handle ore regeneration
+        // Handle ore regeneration (sets to cobblestone, schedules regen)
         mineManager.onOreMined(blockLoc);
 
         // Award EP
