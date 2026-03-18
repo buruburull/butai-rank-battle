@@ -278,76 +278,76 @@ growth_zones:
   mine:
     world: world
     spawn:
-      x: 300.5
-      y: 64.0
-      z: 300.5
+      x: 111.55
+      y: 45.00
+      z: 36.15
       yaw: 0.0
     regen_delay_seconds: 30
     # 鉱石座標リスト（サーバーで実際に配置後、座標を更新してください）
     ores:
       coal_1:
-        x: 305
-        y: 62
-        z: 305
+        x: 117
+        y: 44
+        z: 45
         material: COAL_ORE
       coal_2:
-        x: 307
-        y: 63
-        z: 303
+        x: 117
+        y: 43
+        z: 47
         material: COAL_ORE
       coal_3:
-        x: 310
-        y: 61
-        z: 308
+        x: 117
+        y: 41
+        z: 44
         material: COAL_ORE
       iron_1:
-        x: 312
-        y: 60
-        z: 302
+        x: 110
+        y: 43
+        z: 44
         material: IRON_ORE
       iron_2:
-        x: 308
-        y: 59
-        z: 310
+        x: 110
+        y: 42
+        z: 44
         material: IRON_ORE
       gold_1:
-        x: 315
-        y: 58
-        z: 306
+        x: 110
+        y: 42
+        z: 46
         material: GOLD_ORE
       gold_2:
-        x: 303
-        y: 57
-        z: 312
+        x: 110
+        y: 43
+        z: 46
         material: GOLD_ORE
       emerald_1:
-        x: 318
-        y: 56
-        z: 300
+        x: 118
+        y: 43
+        z: 51
         material: EMERALD_ORE
       diamond_1:
-        x: 320
-        y: 55
-        z: 310
+        x: 112
+        y: 42
+        z: 55
         material: DIAMOND_ORE
       diamond_2:
-        x: 306
-        y: 54
-        z: 318
+        x: 110
+        y: 43
+        z: 54
         material: DIAMOND_ORE
 
   # MOBタワーエリア
   mob_tower:
     world: world
     spawn:
-      x: 400.5
-      y: 64.0
-      z: 300.5
+      x: 183.27
+      y: 104.00
+      z: -16.80
       yaw: 0.0
     mob_spawn:
-      x: 400.5
-      y: 64.0
-      z: 300.5
+      x: 193.29
+      y: 104.00
+      z: -23.47
       radius: 8
     max_mobs: 10
     spawn_interval_seconds: 5
@@ -356,19 +356,19 @@ growth_zones:
 growth_npcs:
   mine_npc:
     world: world
-    x: 48.50
-    y: 115.0
-    z: -25.50
-    yaw: 180.0
+    x: 65.50
+    y: 116.0
+    z: -55.50
+    yaw: 90.0
     name: "§a§l鉱山"
     subtitle: "§7右クリックでテレポート"
     teleport_to: "mine"
   mob_tower_npc:
     world: world
-    x: 43.50
-    y: 115.0
-    z: -25.50
-    yaw: 180.0
+    x: 63.50
+    y: 116.00
+    z: -60.50
+    yaw: 90.0
     name: "§c§lMOBタワー"
     subtitle: "§7右クリックでテレポート"
     teleport_to: "mob_tower"
