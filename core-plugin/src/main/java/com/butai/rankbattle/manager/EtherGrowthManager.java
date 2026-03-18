@@ -182,14 +182,33 @@ public class EtherGrowthManager {
     }
 
     /**
+     * Get the current active season ID, or create a default one if none exists.
+     */
+    private int getOrCreateSeasonId() {
+        int seasonId = seasonDAO.getActiveSeasonId();
+        if (seasonId < 0) {
+            // No active season - use fallback season ID 1
+            // Growth still works; data will be associated with season 1
+            seasonId = seasonDAO.createSeason("Default");
+            if (seasonId < 0) {
+                logger.warning("Failed to create default season for growth system, using memory-only mode");
+            }
+        }
+        return seasonId;
+    }
+
+    /**
      * Load player growth data from DB (call on join).
      */
     public void loadPlayer(UUID uuid) {
-        int seasonId = seasonDAO.getActiveSeasonId();
-        if (seasonId < 0) return;
-
-        int[] data = growthDAO.getOrCreateGrowth(uuid, seasonId);
-        playerGrowth.put(uuid, data);
+        int seasonId = getOrCreateSeasonId();
+        if (seasonId < 0) {
+            // Memory-only fallback
+            playerGrowth.put(uuid, new int[]{0, 0, 0, 0});
+        } else {
+            int[] data = growthDAO.getOrCreateGrowth(uuid, seasonId);
+            playerGrowth.put(uuid, data);
+        }
 
         int etherCap = growthDAO.getEtherCap(uuid);
         etherCapCache.put(uuid, etherCap);
