@@ -360,12 +360,21 @@ growth_zones:
           - ZOMBIE
         ep_values:
           ZOMBIE: 2
-        # 次の階へのNPC
+        spawn:
+          x: 134.47
+          y: 65.00
+          z: 61.55
+          yaw: 0.0
         next_floor_npc:
           x: 140.50
           y: 65.00
           z: 55.50
           yaw: 0.0
+        exit_npc:
+          x: 128.50
+          y: 65.00
+          z: 55.50
+          yaw: 180.0
       floor_2:
         name: "§e2F - スケルトンの間"
         required_level: 5
@@ -389,6 +398,11 @@ growth_zones:
           y: 75.00
           z: 55.50
           yaw: 0.0
+        exit_npc:
+          x: 128.50
+          y: 75.00
+          z: 55.50
+          yaw: 180.0
       floor_3:
         name: "§63F - 蜘蛛とウィッチの間"
         required_level: 15
@@ -414,6 +428,11 @@ growth_zones:
           y: 85.00
           z: 55.50
           yaw: 0.0
+        exit_npc:
+          x: 128.50
+          y: 85.00
+          z: 55.50
+          yaw: 180.0
       floor_4:
         name: "§c4F - 襲撃者の間"
         required_level: 25
@@ -439,6 +458,11 @@ growth_zones:
           y: 95.00
           z: 55.50
           yaw: 0.0
+        exit_npc:
+          x: 128.50
+          y: 95.00
+          z: 55.50
+          yaw: 180.0
       floor_5:
         name: "§55F - ウォーデンの間"
         required_level: 35
@@ -457,6 +481,11 @@ growth_zones:
           y: 105.00
           z: 61.55
           yaw: 0.0
+        exit_npc:
+          x: 128.50
+          y: 105.00
+          z: 55.50
+          yaw: 180.0
 
 # Growth zone NPCs (lobby)
 growth_npcs:

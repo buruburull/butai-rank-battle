@@ -74,10 +74,12 @@ public class EtherGrowthManager {
         public final Map<EntityType, Integer> epValues;
         public final Location playerSpawn;
         public final Location nextFloorNpcLoc;
+        public final Location exitNpcLoc;
 
         public FloorData(String id, String name, int requiredLevel, Location mobSpawnCenter,
                          int mobSpawnRadius, int maxMobs, List<EntityType> mobTypes,
-                         Map<EntityType, Integer> epValues, Location playerSpawn, Location nextFloorNpcLoc) {
+                         Map<EntityType, Integer> epValues, Location playerSpawn,
+                         Location nextFloorNpcLoc, Location exitNpcLoc) {
             this.id = id;
             this.name = name;
             this.requiredLevel = requiredLevel;
@@ -88,6 +90,7 @@ public class EtherGrowthManager {
             this.epValues = epValues;
             this.playerSpawn = playerSpawn;
             this.nextFloorNpcLoc = nextFloorNpcLoc;
+            this.exitNpcLoc = exitNpcLoc;
         }
     }
 
@@ -186,8 +189,18 @@ public class EtherGrowthManager {
                 nextNpcLoc = new Location(world, nx, ny, nz, nyaw, 0);
             }
 
+            // Exit NPC location
+            Location exitNpcLoc = null;
+            if (floor.contains("exit_npc")) {
+                double ex = floor.getDouble("exit_npc.x");
+                double ey = floor.getDouble("exit_npc.y");
+                double ez = floor.getDouble("exit_npc.z");
+                float eyaw = (float) floor.getDouble("exit_npc.yaw", 0);
+                exitNpcLoc = new Location(world, ex, ey, ez, eyaw, 0);
+            }
+
             floors.add(new FloorData(floorKey, name, reqLevel, spawnCenter, radius, maxMobs,
-                    mobTypes, epValues, playerSpawn, nextNpcLoc));
+                    mobTypes, epValues, playerSpawn, nextNpcLoc, exitNpcLoc));
         }
 
         logger.info("Mob tower loaded: " + floors.size() + " floors, entry=" + mobTowerSpawn);

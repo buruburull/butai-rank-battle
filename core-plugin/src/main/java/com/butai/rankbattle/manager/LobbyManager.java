@@ -344,9 +344,10 @@ public class LobbyManager {
                         "next_" + (i + 1));
             }
 
-            // "Exit to lobby" NPC on each floor (at spawn point offset)
-            if (floor.playerSpawn != null) {
-                Location exitLoc = floor.playerSpawn.clone().add(-3, 0, 0);
+            // "Exit to lobby" NPC on each floor (auto: playerSpawn -3x, or exitNpcLoc if configured)
+            Location exitLoc = floor.exitNpcLoc != null ? floor.exitNpcLoc
+                    : (floor.playerSpawn != null ? floor.playerSpawn.clone().add(-3, 0, 0) : null);
+            if (exitLoc != null) {
                 spawnFloorNPC(exitLoc,
                         "§e§lロビーへ戻る",
                         "§7右クリックで退出",

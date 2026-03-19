@@ -266,13 +266,20 @@
 ### 26. エーテル成長システム（完了）
 - [x] ether_growthテーブル追加（schema.sql）
 - [x] EtherGrowthDAO.java（EP/レベル/エーテル上限のDB永続化）
-- [x] MineManager.java（鉱石座標管理、丸石化→時間経過で再生）
-- [x] EtherGrowthManager.java（EP計算、レベルアップ判定、MOBスポーン管理）
-- [x] EtherGrowthListener.java（BlockBreakEvent/EntityDeathEventでEP獲得）
+- [x] MineManager.java（鉱石座標管理、丸石化→時間経過で再生、SURVIVALモード切替、ブロック保護）
+- [x] EtherGrowthManager.java（EP計算、レベルアップ判定、階層別MOBスポーン管理）
+- [x] EtherGrowthListener.java（BlockBreakEvent/EntityDeathEventでEP獲得、デス時ドロップ無効）
 - [x] EtherManager.java修正（MAX_ETHER→プレイヤー別動的上限）
-- [x] frames.yml（鉱山・MOBタワー座標設定、Growth NPC追加）
-- [x] LobbyManager/LobbyListener（Growth NPCスポーン・テレポート処理）
+- [x] frames.yml（鉱山・MOBタワー5F構成座標設定、Growth NPC追加）
+- [x] LobbyManager/LobbyListener（Growth NPCスポーン・テレポート処理、階層間NPC）
 - [x] PlayerConnectionListener（growth load/unload）
+- [x] 階層MOBタワー（5F構成: ゾンビ→スケルトン→クモ/ウィッチ→襲撃者→ウォーデン）
+- [x] タワー/鉱山インベントリ保存・復元（入場時クリア→鉄剣/鉄ピッケル付与→退出時復元）
+- [x] デス時アイテムドロップ無効（タワー/鉱山内）
+- [x] フレーム持ち込み禁止
+- [x] MOBドロップ・経験値無効
+- [x] 鉱石のみ破壊可能（周囲ブロック保護）
+- [x] 鉱山SURVIVALモード切替
 - [x] game-spec.md仕様反映
 
 ## Phase 2以降（参考）
@@ -287,4 +294,4 @@
 
 ---
 
-*最終更新: 2026-03-18*
+*最終更新: 2026-03-19*

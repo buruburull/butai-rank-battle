@@ -80,7 +80,8 @@ butai-rank-battle/
 │   │   ├── PlayerDAO.java         # Player CRUD
 │   │   ├── FrameSetDAO.java       # FrameSet persistence
 │   │   ├── TeamDAO.java           # Team persistence
-│   │   └── SeasonDAO.java         # Season/snapshot management
+│   │   ├── SeasonDAO.java         # Season/snapshot management
+│   │   └── EtherGrowthDAO.java   # Ether growth EP/level persistence
 │   ├── model/             # Data models
 │   │   ├── BRBPlayer.java         # Player data (UUID, rank, RP)
 │   │   ├── FrameData.java         # Frame definition (damage, cost, etc.)
@@ -105,15 +106,22 @@ butai-rank-battle/
 │   │   ├── PlayerConnectionListener.java  # Join/quit, data load/save
 │   │   ├── LobbyListener.java     # NPC interaction
 │   │   ├── ChatTabListener.java   # Rank prefix in chat/tab
-│   │   └── BlockChangeListener.java # Block tracking for map restoration
+│   │   ├── BlockChangeListener.java # Block tracking for map restoration
+│   │   ├── FrameEffectListener.java # Right-click frame effects (Leap, Cloak, etc.)
+│   │   └── EtherGrowthListener.java # Mine/tower EP gain, death drop disable
 │   ├── manager/
 │   │   ├── RankManager.java       # Player cache, rank/RP calculation, team management
 │   │   ├── QueueManager.java      # Solo/team/practice queues, matchmaking
 │   │   ├── FrameRegistry.java     # Frame definitions from frames.yml, arena maps
 │   │   ├── FrameSetManager.java   # Player frameset (8 slots), presets
-│   │   ├── EtherManager.java      # Ether (1000 max), leak, E-Shift
-│   │   ├── LobbyManager.java      # NPCs, holograms, action bar
+│   │   ├── EtherManager.java      # Ether (dynamic cap), leak, E-Shift
+│   │   ├── EtherGrowthManager.java # EP/Level, MOB tower floors, inventory save/restore
+│   │   ├── MineManager.java       # Mine ore coords, cobble→regen, SURVIVAL mode
+│   │   ├── LobbyManager.java      # NPCs, holograms, action bar, floor NPCs
 │   │   └── DisconnectTracker.java # Disconnect penalty tracking
+│   ├── gui/
+│   │   ├── FrameSetGUI.java       # Frameset config GUI (54-slot chest)
+│   │   └── FrameSetGUIListener.java # GUI click/drag handling
 │   └── arena/
 │       └── ArenaInstance.java     # Match lifecycle, judge, sudden death, block restore
 │
@@ -215,14 +223,15 @@ butai-rank-battle/
 
 ## Database Schema Summary
 
-Tables: players, weapon_rp, frame_master, player_framesets, teams, team_members, seasons, match_history, match_results, season_snapshots
+Tables: players, weapon_rp, frame_master, player_framesets, teams, team_members, seasons, match_history, match_results, season_snapshots, ether_growth
 Views: player_overall_ranking, recent_matches, weapon_popularity
 See `docs/schema.sql` for full schema.
 
 ## Key Systems Summary
 
 - **フレーム**: 16種（STRIKER 3, GUNNER 4, MARKSMAN 3, SUPPORT 6）。frames.ymlで定義
-- **エーテル**: 最大1000。XPバー表示。HPダメージに連動してリーク（(maxHP-currentHP)*0.5/秒）
+- **エーテル**: 基本1000、成長システムで最大2000。XPバー表示。HPダメージに連動してリーク（(maxHP-currentHP)*0.5/秒）
+- **エーテル成長**: 鉱山(採掘EP)・MOBタワー(5F階層式・討伐EP)でEP獲得→100×1.10^Lvの指数カーブでレベルアップ→エーテル上限+25/Lv、最大Lv40
 - **E-Shift**: エーテル0で自動発動。ロビーテレポート（キルではない）
 - **ランク**: S(15000+), A(10000+), B(5000+), C(<5000), UNRANKED
 - **RP計算**: 非対称Elo方式（base 30, clamp 5-120, 敗者は勝者の70%, 参加ボーナス+5）
@@ -232,6 +241,6 @@ See `docs/schema.sql` for full schema.
 
 ---
 
-**Last Updated**: 2026-03-13
+**Last Updated**: 2026-03-19
 **Main Branch**: main
 **GitHub**: https://github.com/buruburull/border-rank-battle.git
