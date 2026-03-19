@@ -1,5 +1,6 @@
 package com.butai.rankbattle.listener;
 
+import com.butai.rankbattle.BRBPlugin;
 import com.butai.rankbattle.manager.EtherGrowthManager;
 import com.butai.rankbattle.manager.MineManager;
 import com.butai.rankbattle.util.MessageUtil;
@@ -12,12 +13,15 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.UUID;
 
 /**
  * Listens for mining and mob kill events in growth zones.
- * Awards EP (Ether Points) to players for ether cap growth.
+ * Also handles death in mob tower (no drops, respawn at 1F with sword).
  */
 public class EtherGrowthListener implements Listener {
 
@@ -36,7 +40,6 @@ public class EtherGrowthListener implements Listener {
     public void onBlockBreakProtection(BlockBreakEvent event) {
         Location blockLoc = event.getBlock().getLocation();
 
-        // If in mine zone but NOT a registered ore → cancel
         if (mineManager.isInMineZone(blockLoc) && !mineManager.isRegisteredOre(blockLoc)) {
             event.setCancelled(true);
         }
@@ -50,10 +53,8 @@ public class EtherGrowthListener implements Listener {
         Player player = event.getPlayer();
         Location blockLoc = event.getBlock().getLocation();
 
-        // Check if it's a registered ore in the mine zone
         if (!mineManager.isRegisteredOre(blockLoc)) return;
 
-        // Check if it's currently regenerating (cobblestone)
         if (mineManager.isRegenerating(blockLoc)) {
             event.setCancelled(true);
             MessageUtil.sendWarning(player, "この鉱石はまだ再生中です...");
@@ -64,18 +65,12 @@ public class EtherGrowthListener implements Listener {
         int ep = mineManager.getOreEP(material);
         if (ep <= 0) return;
 
-        // Cancel the break event entirely (prevent AIR replacement)
-        // Then manually convert to cobblestone via onOreMined
         event.setCancelled(true);
-
-        // Handle ore regeneration (sets to cobblestone, schedules regen)
         mineManager.onOreMined(blockLoc);
 
-        // Award EP
         UUID uuid = player.getUniqueId();
         growthManager.addOreEP(uuid, ep);
 
-        // Show EP gain
         int currentEP = growthManager.getEPTotal(uuid);
         int requiredEP = growthManager.getEPForNextLevel(uuid);
         if (requiredEP > 0) {
@@ -94,22 +89,18 @@ public class EtherGrowthListener implements Listener {
         Player killer = event.getEntity().getKiller();
         if (killer == null) return;
 
-        // Check if the mob is in the mob tower area
         if (!growthManager.isInMobTowerArea(entity.getLocation())) return;
 
-        // Get EP for this mob type
         int ep = growthManager.getMobEP(entity.getType());
         if (ep <= 0) return;
 
-        // Clear drops in growth zone (no loot)
+        // No drops from mobs in tower
         event.getDrops().clear();
         event.setDroppedExp(0);
 
-        // Award EP
         UUID uuid = killer.getUniqueId();
         growthManager.addMobEP(uuid, ep);
 
-        // Show EP gain
         int currentEP = growthManager.getEPTotal(uuid);
         int requiredEP = growthManager.getEPForNextLevel(uuid);
         if (requiredEP > 0) {
@@ -117,5 +108,47 @@ public class EtherGrowthListener implements Listener {
         } else {
             MessageUtil.sendInfo(killer, "§a+" + ep + " EP §8(§6MAX LEVEL§8)");
         }
+    }
+
+    /**
+     * Handle player death in mob tower: no item drops, respawn at 1F with sword.
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+        UUID uuid = player.getUniqueId();
+
+        if (!growthManager.isInTower(uuid)) return;
+
+        // No item drops on death in tower
+        event.getDrops().clear();
+        event.setDroppedExp(0);
+        event.setKeepInventory(true);
+        event.setKeepLevel(true);
+
+        // Respawn at 1F after 1 tick (need to wait for respawn)
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) return;
+
+                // Force respawn if still dead
+                if (player.isDead()) {
+                    player.spigot().respawn();
+                }
+
+                // Teleport to 1F and re-give sword
+                Location spawn = growthManager.getMobTowerSpawn();
+                if (spawn != null) {
+                    player.teleport(spawn);
+                }
+                player.getInventory().clear();
+                player.getInventory().setItem(0, new ItemStack(Material.IRON_SWORD));
+                player.setHealth(player.getMaxHealth());
+                player.setFoodLevel(20);
+
+                MessageUtil.sendWarning(player, "§c倒されました！§71Fにリスポーンしました。");
+            }
+        }.runTaskLater(BRBPlugin.getInstance(), 2L);
     }
 }

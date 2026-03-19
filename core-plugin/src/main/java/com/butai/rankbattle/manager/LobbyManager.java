@@ -33,6 +33,7 @@ public class LobbyManager {
 
     public static final NamespacedKey NPC_KEY = new NamespacedKey("butairankbattle", "npc_command");
     public static final NamespacedKey GROWTH_TELEPORT_KEY = new NamespacedKey("butairankbattle", "growth_teleport");
+    public static final NamespacedKey FLOOR_ACTION_KEY = new NamespacedKey("butairankbattle", "floor_action");
     public static final NamespacedKey HOLOGRAM_KEY = new NamespacedKey("butairankbattle", "hologram_type");
 
     private final BRBPlugin plugin;
@@ -71,6 +72,7 @@ public class LobbyManager {
                 cleanupOldEntities();
                 spawnNPCs();
                 spawnGrowthNPCs();
+                spawnFloorNPCs();
                 spawnHolograms();
                 startActionBarLoop();
                 startRankingUpdateLoop();
@@ -320,6 +322,77 @@ public class LobbyManager {
 
             logger.info("Growth NPC spawned: " + key + " → " + teleportTo);
         }
+    }
+
+    /**
+     * Spawn floor NPCs for each mob tower floor (next floor / exit).
+     */
+    private void spawnFloorNPCs() {
+        EtherGrowthManager gm = plugin.getEtherGrowthManager();
+        if (gm == null || gm.getFloorCount() == 0) return;
+
+        java.util.List<EtherGrowthManager.FloorData> floors = gm.getFloors();
+        for (int i = 0; i < floors.size(); i++) {
+            EtherGrowthManager.FloorData floor = floors.get(i);
+
+            // "Next floor" NPC on this floor (goes to floor i+1)
+            if (floor.nextFloorNpcLoc != null && i + 1 < floors.size()) {
+                EtherGrowthManager.FloorData nextFloor = floors.get(i + 1);
+                spawnFloorNPC(floor.nextFloorNpcLoc,
+                        "§b§l次の階へ §8→ " + nextFloor.name,
+                        "§7必要Lv." + nextFloor.requiredLevel,
+                        "next_" + (i + 1));
+            }
+
+            // "Exit to lobby" NPC on each floor (at spawn point offset)
+            if (floor.playerSpawn != null) {
+                Location exitLoc = floor.playerSpawn.clone().add(-3, 0, 0);
+                spawnFloorNPC(exitLoc,
+                        "§e§lロビーへ戻る",
+                        "§7右クリックで退出",
+                        "exit");
+            }
+        }
+    }
+
+    private void spawnFloorNPC(Location loc, String name, String subtitle, String action) {
+        World world = loc.getWorld();
+        if (world == null) return;
+
+        Villager villager = (Villager) world.spawnEntity(loc, EntityType.VILLAGER);
+        villager.setCustomName(null);
+        villager.setCustomNameVisible(false);
+        villager.setAI(false);
+        villager.setInvulnerable(true);
+        villager.setSilent(true);
+        villager.setCollidable(false);
+        villager.setProfession(Villager.Profession.NONE);
+        villager.setVillagerType(Villager.Type.PLAINS);
+
+        if ("exit".equals(action)) {
+            // Exit NPC uses GROWTH_TELEPORT_KEY with "lobby"
+            villager.getPersistentDataContainer().set(GROWTH_TELEPORT_KEY, PersistentDataType.STRING, "lobby");
+            villager.getPersistentDataContainer().set(NPC_KEY, PersistentDataType.STRING, "");
+        } else {
+            // Floor navigation NPC
+            villager.getPersistentDataContainer().set(FLOOR_ACTION_KEY, PersistentDataType.STRING, action);
+            villager.getPersistentDataContainer().set(NPC_KEY, PersistentDataType.STRING, "");
+        }
+
+        spawnedNPCs.add(villager.getUniqueId());
+
+        // Name label
+        TextDisplay td = (TextDisplay) world.spawnEntity(
+                loc.clone().add(0, 2.3, 0), EntityType.TEXT_DISPLAY);
+        td.setText(name + "\n" + subtitle);
+        td.setBillboard(Display.Billboard.CENTER);
+        td.setAlignment(TextDisplay.TextAlignment.CENTER);
+        td.setSeeThrough(false);
+        td.setShadowed(true);
+        td.getPersistentDataContainer().set(HOLOGRAM_KEY, PersistentDataType.STRING, "npc_label");
+        spawnedHolograms.add(td.getUniqueId());
+
+        logger.info("Floor NPC spawned: " + action + " at " + locToString(loc));
     }
 
     // ========== Hologram Management ==========
