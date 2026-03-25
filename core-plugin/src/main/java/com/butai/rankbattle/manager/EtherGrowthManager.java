@@ -49,8 +49,10 @@ public class EtherGrowthManager {
     private final Map<UUID, Map<String, Integer>> playerUpgrades = new ConcurrentHashMap<>();
     // Per-player ether cap cache
     private final Map<UUID, Integer> etherCapCache = new ConcurrentHashMap<>();
-    // Saved inventory for tower entry (restored on exit)
+    // Saved lobby inventory for tower entry (restored on exit)
     private final Map<UUID, ItemStack[]> savedInventories = new ConcurrentHashMap<>();
+    // Saved tower inventory (persists between tower sessions)
+    private final Map<UUID, ItemStack[]> savedTowerInventories = new ConcurrentHashMap<>();
     // Track which players are in the tower
     private final Set<UUID> playersInTower = ConcurrentHashMap.newKeySet();
 
@@ -289,13 +291,19 @@ public class EtherGrowthManager {
 
     public void enterTower(Player player) {
         UUID uuid = player.getUniqueId();
-        // Save current inventory
+        // Save current (lobby) inventory
         savedInventories.put(uuid, player.getInventory().getContents().clone());
         playersInTower.add(uuid);
 
-        // Clear and give iron sword
-        player.getInventory().clear();
-        player.getInventory().setItem(0, new ItemStack(org.bukkit.Material.IRON_SWORD));
+        // Restore saved tower inventory if exists, otherwise give default iron sword
+        ItemStack[] towerInv = savedTowerInventories.remove(uuid);
+        if (towerInv != null) {
+            player.getInventory().clear();
+            player.getInventory().setContents(towerInv);
+        } else {
+            player.getInventory().clear();
+            player.getInventory().setItem(0, new ItemStack(org.bukkit.Material.IRON_SWORD));
+        }
 
         // Apply tower HP bonus from permanent upgrade
         applyTowerHPBonus(player);
@@ -303,11 +311,16 @@ public class EtherGrowthManager {
 
     /**
      * Restore player inventory when leaving tower.
+     * Saves tower inventory for next entry.
      */
     public void exitTower(Player player) {
         UUID uuid = player.getUniqueId();
         playersInTower.remove(uuid);
 
+        // Save tower inventory for next entry
+        savedTowerInventories.put(uuid, player.getInventory().getContents().clone());
+
+        // Restore lobby inventory
         ItemStack[] saved = savedInventories.remove(uuid);
         if (saved != null) {
             player.getInventory().clear();
@@ -464,9 +477,22 @@ public class EtherGrowthManager {
         playerGrowth.remove(uuid);
         etherCapCache.remove(uuid);
         playerUpgrades.remove(uuid);
-        // If player was in tower, restore inventory
+        // If player was in tower, save tower inventory and restore lobby inventory
         if (playersInTower.remove(uuid)) {
-            savedInventories.remove(uuid);
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                // Save current (tower) inventory for next session
+                savedTowerInventories.put(uuid, player.getInventory().getContents().clone());
+                // Restore lobby inventory so they rejoin in normal state
+                ItemStack[] lobbyInv = savedInventories.remove(uuid);
+                if (lobbyInv != null) {
+                    player.getInventory().clear();
+                    player.getInventory().setContents(lobbyInv);
+                }
+                removeTowerHPBonus(player);
+            } else {
+                savedInventories.remove(uuid);
+            }
         }
     }
 
