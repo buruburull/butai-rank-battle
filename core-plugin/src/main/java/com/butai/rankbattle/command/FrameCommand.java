@@ -14,7 +14,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
 public class FrameCommand implements CommandExecutor, TabCompleter {
 
     public static final NamespacedKey FRAME_KEY = new NamespacedKey(BRBPlugin.getInstance(), "frame_id");
+    public static final NamespacedKey LOBBY_ITEM_KEY = new NamespacedKey("butairankbattle", "lobby_item");
 
     private final FrameRegistry frameRegistry;
     private final FrameSetManager frameSetManager;
@@ -39,6 +42,10 @@ public class FrameCommand implements CommandExecutor, TabCompleter {
 
     public void setFrameSetGUI(FrameSetGUI gui) {
         this.frameSetGUI = gui;
+    }
+
+    public FrameSetGUI getFrameSetGUI() {
+        return frameSetGUI;
     }
 
     /**
@@ -107,9 +114,14 @@ public class FrameCommand implements CommandExecutor, TabCompleter {
     }
 
     /**
-     * Refresh all hotbar slots based on the current frameset.
+     * Refresh all hotbar slots based on the current frameset, and add lobby utility items.
+     * Layout: [Frame1-8] [Arrows(if ranged)]
+     * Bottom row (slots 27-35): [...] [Guide Book:31] [Stats Clock:32] [FrameSet Star:33] [...]
      */
     public void refreshHotbar(Player player) {
+        // Clear entire inventory first for clean state
+        player.getInventory().clear();
+
         String[] slots = frameSetManager.getFrameSet(player.getUniqueId());
         boolean needsArrows = false;
 
@@ -131,16 +143,176 @@ public class FrameCommand implements CommandExecutor, TabCompleter {
             player.getInventory().setItem(i, null);
         }
 
-        // Give arrows if any ranged frame is equipped (slot 9 = offhand area, use slot 8 for arrows)
+        // Give arrows if any ranged frame is equipped
         if (needsArrows) {
-            // Place arrows in slot 8 (hotbar slot 9) if empty, or add to inventory
-            ItemStack arrows = new ItemStack(Material.ARROW, 64);
-            if (player.getInventory().getItem(8) == null) {
-                player.getInventory().setItem(8, arrows);
-            } else if (!player.getInventory().contains(Material.ARROW)) {
-                player.getInventory().addItem(arrows);
-            }
+            player.getInventory().setItem(8, new ItemStack(Material.ARROW, 64));
         }
+
+        // === Lobby utility items (bottom inventory row) ===
+        player.getInventory().setItem(31, createGuideBook());
+        player.getInventory().setItem(32, createStatsItem());
+        player.getInventory().setItem(33, createFrameSetItem());
+    }
+
+    /**
+     * Create the guide book with game explanation and commands.
+     */
+    private ItemStack createGuideBook() {
+        ItemStack book = new ItemStack(Material.WRITTEN_BOOK);
+        BookMeta meta = (BookMeta) book.getItemMeta();
+        if (meta != null) {
+            meta.setTitle("BRB ガイドブック");
+            meta.setAuthor("BUTAI");
+            meta.setGeneration(BookMeta.Generation.ORIGINAL);
+
+            // Page 1: Overview
+            meta.addPage(
+                    "§l§6BUTAI Rank Battle\n§l§6ガイドブック\n\n"
+                    + "§0フレーム（特殊兵装）を装備し、\n"
+                    + "エーテル（戦闘エネルギー）を\n"
+                    + "管理しながらランクマッチで\n"
+                    + "対戦する競技型PvPです。\n\n"
+                    + "§8→ 次のページへ"
+            );
+
+            // Page 2: Frames
+            meta.addPage(
+                    "§l§6フレームについて\n\n"
+                    + "§0■ STRIKER: 近接戦闘型\n"
+                    + "  Crescent, Fang, Bastion\n\n"
+                    + "§0■ GUNNER: 射撃型\n"
+                    + "  Pulse, Nova, Seeker, Frost\n\n"
+                    + "§0■ MARKSMAN: 狙撃型\n"
+                    + "  Falcon, Volt, Zenith\n\n"
+                    + "§0■ SUPPORT: 補助型\n"
+                    + "  Leap, Cloak, Warp 他"
+            );
+
+            // Page 3: Ether
+            meta.addPage(
+                    "§l§6エーテルシステム\n\n"
+                    + "§0基本上限: 1000\n"
+                    + "成長で最大2000まで拡張可能\n\n"
+                    + "§0■ XPバーで残量表示\n"
+                    + "■ HP減少でリーク発生\n"
+                    + "■ 200以下で黄色警告\n"
+                    + "■ 100以下で赤色警告\n"
+                    + "■ 0で§cE-Shift§0（緊急離脱）\n\n"
+                    + "§8※E-Shiftはキルではなく\n"
+                    + "§8ロビーへの緊急テレポート"
+            );
+
+            // Page 4: Match
+            meta.addPage(
+                    "§l§6マッチの種類\n\n"
+                    + "§0■ ソロランク (5分)\n"
+                    + "  1vs1、RP変動あり\n\n"
+                    + "§0■ チームランク (10分)\n"
+                    + "  チーム対抗、RP変動あり\n\n"
+                    + "§0■ プラクティス (5分)\n"
+                    + "  1vs1、RP変動なし\n\n"
+                    + "§0時間切れ→ジャッジ判定\n"
+                    + "同点→サドンデス(60秒)"
+            );
+
+            // Page 5: Rank
+            meta.addPage(
+                    "§l§6ランクシステム\n\n"
+                    + "§6§lS級§0: 15,000+ RP\n"
+                    + "§c§lA級§0: 10,000+ RP\n"
+                    + "§b§lB級§0:  5,000+ RP\n"
+                    + "§a§lC級§0:  5,000未満\n\n"
+                    + "§0武器タイプ別にRP追跡:\n"
+                    + "STRIKER / GUNNER / MARKSMAN\n\n"
+                    + "§0スロット1の武器カテゴリで\n"
+                    + "RP変動対象が決まります。"
+            );
+
+            // Page 6: Growth & Shop
+            meta.addPage(
+                    "§l§6成長システム\n\n"
+                    + "§0鉱山で採掘 → EP+シャード\n"
+                    + "MOBタワーで討伐 → EP+シャード\n\n"
+                    + "§0■ EP: レベルアップ用\n"
+                    + "  Lv UP→エーテル上限+25\n\n"
+                    + "§0■ シャード: タワー内ショップ\n"
+                    + "  消耗品/スキル/永続強化を購入\n\n"
+                    + "§8タワー各階のショップNPCへ"
+            );
+
+            // Page 7: Commands
+            meta.addPage(
+                    "§l§6コマンド一覧 (1/2)\n\n"
+                    + "§0§l[フレーム]\n"
+                    + "§0/frame §7- 装備GUI\n"
+                    + "§0/frame list §7- 一覧\n"
+                    + "§0/frame set <S> <名前>\n"
+                    + "§0/frame view §7- 確認\n"
+                    + "§0/frame remove <S>\n"
+                    + "§0/frame preset §7save/load\n\n"
+                    + "§0§l[チーム]\n"
+                    + "§0/team create <名前>\n"
+                    + "§0/team invite <プレイヤー>"
+            );
+
+            // Page 8: Commands 2
+            meta.addPage(
+                    "§l§6コマンド一覧 (2/2)\n\n"
+                    + "§0§l[ランクマッチ]\n"
+                    + "§0/rank solo §7- ソロキュー\n"
+                    + "§0/rank team §7- チームキュー\n"
+                    + "§0/rank practice §7- 練習\n"
+                    + "§0/rank cancel §7- キャンセル\n"
+                    + "§0/rank stats §7- 戦績\n"
+                    + "§0/rank top §7- TOP10\n"
+                    + "§0/rank history §7- 履歴\n"
+                    + "§0/rank spectate §7- 観戦"
+            );
+
+            meta.getPersistentDataContainer().set(LOBBY_ITEM_KEY, PersistentDataType.STRING, "guide");
+            book.setItemMeta(meta);
+        }
+        return book;
+    }
+
+    /**
+     * Create the stats clock item (right-click to show stats).
+     */
+    private ItemStack createStatsItem() {
+        ItemStack item = new ItemStack(Material.CLOCK);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§e§l戦績確認");
+            meta.setLore(List.of(
+                    "§7右クリックで自分の戦績を表示",
+                    "",
+                    "§8ランク・RP・勝敗を確認"
+            ));
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            meta.getPersistentDataContainer().set(LOBBY_ITEM_KEY, PersistentDataType.STRING, "stats");
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    /**
+     * Create the frameset nether star item (right-click to open frame GUI).
+     */
+    private ItemStack createFrameSetItem() {
+        ItemStack item = new ItemStack(Material.NETHER_STAR);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName("§b§lフレーム設定");
+            meta.setLore(List.of(
+                    "§7右クリックでフレームセットGUIを開く",
+                    "",
+                    "§8フレームの装備・変更はこちら"
+            ));
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            meta.getPersistentDataContainer().set(LOBBY_ITEM_KEY, PersistentDataType.STRING, "frameset");
+            item.setItemMeta(meta);
+        }
+        return item;
     }
 
     @Override

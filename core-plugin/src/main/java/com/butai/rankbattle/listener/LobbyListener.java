@@ -1,6 +1,7 @@
 package com.butai.rankbattle.listener;
 
 import com.butai.rankbattle.BRBPlugin;
+import com.butai.rankbattle.command.FrameCommand;
 import com.butai.rankbattle.manager.EtherGrowthManager;
 import com.butai.rankbattle.manager.LobbyManager;
 import com.butai.rankbattle.manager.MineManager;
@@ -11,12 +12,15 @@ import org.bukkit.Material;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 /**
@@ -184,6 +188,44 @@ public class LobbyListener implements Listener {
         BRBPlugin plugin = BRBPlugin.getInstance();
         if (plugin.getShopGUI() != null) {
             plugin.getShopGUI().openShop(player);
+        }
+    }
+
+    /**
+     * Handle right-click on lobby utility items (guide book, stats, frameset).
+     */
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+
+        Player player = event.getPlayer();
+        ItemStack item = event.getItem();
+        if (item == null || !item.hasItemMeta()) return;
+
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+
+        String lobbyAction = meta.getPersistentDataContainer()
+                .get(FrameCommand.LOBBY_ITEM_KEY, PersistentDataType.STRING);
+        if (lobbyAction == null) return;
+
+        switch (lobbyAction) {
+            case "stats" -> {
+                event.setCancelled(true);
+                player.performCommand("rank stats");
+            }
+            case "frameset" -> {
+                event.setCancelled(true);
+                BRBPlugin plugin = BRBPlugin.getInstance();
+                if (plugin.getFrameCommand() != null) {
+                    com.butai.rankbattle.gui.FrameSetGUI gui =
+                            plugin.getFrameCommand().getFrameSetGUI();
+                    if (gui != null) {
+                        gui.openGUI(player);
+                    }
+                }
+            }
+            // "guide" = written book, Minecraft handles opening natively
         }
     }
 
