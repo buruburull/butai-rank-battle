@@ -487,6 +487,34 @@ growth_zones:
           z: 55.50
           yaw: 180.0
 
+    # Shop NPCs on each floor (optional - defaults to playerSpawn +3x)
+    shop_npcs:
+      floor_1:
+        x: 134.50
+        y: 65.00
+        z: 55.50
+        yaw: 180.0
+      floor_2:
+        x: 134.50
+        y: 75.00
+        z: 55.50
+        yaw: 180.0
+      floor_3:
+        x: 134.50
+        y: 85.00
+        z: 55.50
+        yaw: 180.0
+      floor_4:
+        x: 134.50
+        y: 95.00
+        z: 55.50
+        yaw: 180.0
+      floor_5:
+        x: 134.50
+        y: 105.00
+        z: 55.50
+        yaw: 180.0
+
 # Growth zone NPCs (lobby)
 growth_npcs:
   mine_npc:

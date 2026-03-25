@@ -3,6 +3,7 @@ package com.butai.rankbattle.listener;
 import com.butai.rankbattle.BRBPlugin;
 import com.butai.rankbattle.manager.EtherGrowthManager;
 import com.butai.rankbattle.manager.MineManager;
+import com.butai.rankbattle.manager.ShopManager;
 import com.butai.rankbattle.util.MessageUtil;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -27,10 +28,15 @@ public class EtherGrowthListener implements Listener {
 
     private final EtherGrowthManager growthManager;
     private final MineManager mineManager;
+    private ShopManager shopManager;
 
     public EtherGrowthListener(EtherGrowthManager growthManager, MineManager mineManager) {
         this.growthManager = growthManager;
         this.mineManager = mineManager;
+    }
+
+    public void setShopManager(ShopManager shopManager) {
+        this.shopManager = shopManager;
     }
 
     /**
@@ -71,12 +77,19 @@ public class EtherGrowthListener implements Listener {
         UUID uuid = player.getUniqueId();
         growthManager.addOreEP(uuid, ep);
 
+        // Shard reward
+        int shardReward = shopManager != null ? shopManager.getOreShard(material) : 0;
+        if (shardReward > 0) {
+            growthManager.addShards(uuid, shardReward);
+        }
+
         int currentEP = growthManager.getEPTotal(uuid);
         int requiredEP = growthManager.getEPForNextLevel(uuid);
+        String shardText = shardReward > 0 ? " §d+" + shardReward + "S" : "";
         if (requiredEP > 0) {
-            MessageUtil.sendInfo(player, "§a+" + ep + " EP §8(§7" + currentEP + "/" + requiredEP + "§8)");
+            MessageUtil.sendInfo(player, "§a+" + ep + " EP" + shardText + " §8(§7" + currentEP + "/" + requiredEP + "§8)");
         } else {
-            MessageUtil.sendInfo(player, "§a+" + ep + " EP §8(§6MAX LEVEL§8)");
+            MessageUtil.sendInfo(player, "§a+" + ep + " EP" + shardText + " §8(§6MAX LEVEL§8)");
         }
     }
 
@@ -101,12 +114,19 @@ public class EtherGrowthListener implements Listener {
         UUID uuid = killer.getUniqueId();
         growthManager.addMobEP(uuid, ep);
 
+        // Shard reward
+        int shardReward = shopManager != null ? shopManager.getMobShard(entity.getType()) : 0;
+        if (shardReward > 0) {
+            growthManager.addShards(uuid, shardReward);
+        }
+
         int currentEP = growthManager.getEPTotal(uuid);
         int requiredEP = growthManager.getEPForNextLevel(uuid);
+        String shardText = shardReward > 0 ? " §d+" + shardReward + "S" : "";
         if (requiredEP > 0) {
-            MessageUtil.sendInfo(killer, "§a+" + ep + " EP §8(§7" + currentEP + "/" + requiredEP + "§8)");
+            MessageUtil.sendInfo(killer, "§a+" + ep + " EP" + shardText + " §8(§7" + currentEP + "/" + requiredEP + "§8)");
         } else {
-            MessageUtil.sendInfo(killer, "§a+" + ep + " EP §8(§6MAX LEVEL§8)");
+            MessageUtil.sendInfo(killer, "§a+" + ep + " EP" + shardText + " §8(§6MAX LEVEL§8)");
         }
     }
 

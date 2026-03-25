@@ -18,6 +18,9 @@ import com.butai.rankbattle.listener.EtherGrowthListener;
 import com.butai.rankbattle.listener.FrameEffectListener;
 import com.butai.rankbattle.listener.LobbyListener;
 import com.butai.rankbattle.listener.PlayerConnectionListener;
+import com.butai.rankbattle.listener.SkillItemListener;
+import com.butai.rankbattle.gui.ShopGUI;
+import com.butai.rankbattle.gui.ShopGUIListener;
 import com.butai.rankbattle.manager.EtherGrowthManager;
 import com.butai.rankbattle.manager.EtherManager;
 import com.butai.rankbattle.manager.FrameRegistry;
@@ -57,6 +60,9 @@ public class BRBPlugin extends JavaPlugin {
     private ChatTabListener chatTabListener;
     private EtherGrowthManager etherGrowthManager;
     private MineManager mineManager;
+    private com.butai.rankbattle.manager.ShopManager shopManager;
+    private ShopGUI shopGUI;
+    private SkillItemListener skillItemListener;
 
     public static BRBPlugin getInstance() {
         return instance;
@@ -188,8 +194,22 @@ public class BRBPlugin extends JavaPlugin {
                 new com.butai.rankbattle.gui.FrameSetGUIListener(
                         frameSetGUI, frameSetManager, frameRegistry, frameCommand), this);
         getServer().getPluginManager().registerEvents(new BlockChangeListener(queueManager), this);
-        getServer().getPluginManager().registerEvents(
-                new EtherGrowthListener(etherGrowthManager, mineManager), this);
+
+        // Initialize Shop System
+        shopManager = new com.butai.rankbattle.manager.ShopManager(etherGrowthManager, log);
+        shopGUI = new ShopGUI(shopManager, etherGrowthManager);
+
+        EtherGrowthListener etherGrowthListener = new EtherGrowthListener(etherGrowthManager, mineManager);
+        etherGrowthListener.setShopManager(shopManager);
+        getServer().getPluginManager().registerEvents(etherGrowthListener, this);
+
+        // Shop GUI listener
+        getServer().getPluginManager().registerEvents(new ShopGUIListener(shopGUI, shopManager), this);
+
+        // Skill item listener (power charge, overdrive)
+        skillItemListener = new SkillItemListener(etherGrowthManager);
+        getServer().getPluginManager().registerEvents(skillItemListener, this);
+
         chatTabListener = new ChatTabListener(rankManager);
         getServer().getPluginManager().registerEvents(chatTabListener, this);
 
@@ -287,5 +307,17 @@ public class BRBPlugin extends JavaPlugin {
 
     public MineManager getMineManager() {
         return mineManager;
+    }
+
+    public com.butai.rankbattle.manager.ShopManager getShopManager() {
+        return shopManager;
+    }
+
+    public ShopGUI getShopGUI() {
+        return shopGUI;
+    }
+
+    public SkillItemListener getSkillItemListener() {
+        return skillItemListener;
     }
 }

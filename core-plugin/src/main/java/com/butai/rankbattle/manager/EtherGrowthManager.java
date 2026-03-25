@@ -43,8 +43,10 @@ public class EtherGrowthManager {
     private final EtherGrowthDAO growthDAO;
     private final SeasonDAO seasonDAO;
 
-    // In-memory cache per player: [ep_total, growth_level, ore_mined, mob_killed]
+    // In-memory cache per player: [ep_total, growth_level, ore_mined, mob_killed, shards, shards_total]
     private final Map<UUID, int[]> playerGrowth = new ConcurrentHashMap<>();
+    // Per-player permanent upgrade cache: upgrade_type -> level
+    private final Map<UUID, Map<String, Integer>> playerUpgrades = new ConcurrentHashMap<>();
     // Per-player ether cap cache
     private final Map<UUID, Integer> etherCapCache = new ConcurrentHashMap<>();
     // Saved inventory for tower entry (restored on exit)
@@ -282,6 +284,9 @@ public class EtherGrowthManager {
      * Save player inventory and prepare for tower entry.
      * Clears inventory, gives iron sword.
      */
+    private static final org.bukkit.NamespacedKey TOWER_HP_MODIFIER_KEY =
+            new org.bukkit.NamespacedKey("butairankbattle", "tower_hp_bonus");
+
     public void enterTower(Player player) {
         UUID uuid = player.getUniqueId();
         // Save current inventory
@@ -291,6 +296,9 @@ public class EtherGrowthManager {
         // Clear and give iron sword
         player.getInventory().clear();
         player.getInventory().setItem(0, new ItemStack(org.bukkit.Material.IRON_SWORD));
+
+        // Apply tower HP bonus from permanent upgrade
+        applyTowerHPBonus(player);
     }
 
     /**
@@ -304,6 +312,37 @@ public class EtherGrowthManager {
         if (saved != null) {
             player.getInventory().clear();
             player.getInventory().setContents(saved);
+        }
+
+        // Remove tower HP bonus
+        removeTowerHPBonus(player);
+    }
+
+    private void applyTowerHPBonus(Player player) {
+        double bonusHP = getTowerBonusHP(player.getUniqueId());
+        if (bonusHP <= 0) return;
+
+        org.bukkit.attribute.AttributeInstance attr = player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+        if (attr == null) return;
+
+        // Remove existing modifier if any
+        attr.removeModifier(TOWER_HP_MODIFIER_KEY);
+
+        org.bukkit.attribute.AttributeModifier modifier = new org.bukkit.attribute.AttributeModifier(
+                TOWER_HP_MODIFIER_KEY, bonusHP,
+                org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER,
+                org.bukkit.inventory.EquipmentSlotGroup.ANY);
+        attr.addModifier(modifier);
+        player.setHealth(attr.getValue());
+    }
+
+    private void removeTowerHPBonus(Player player) {
+        org.bukkit.attribute.AttributeInstance attr = player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+        if (attr == null) return;
+        attr.removeModifier(TOWER_HP_MODIFIER_KEY);
+        // Clamp health to new max
+        if (player.getHealth() > attr.getValue()) {
+            player.setHealth(attr.getValue());
         }
     }
 
@@ -396,7 +435,7 @@ public class EtherGrowthManager {
     public void loadPlayer(UUID uuid) {
         int seasonId = getOrCreateSeasonId();
         if (seasonId < 0) {
-            playerGrowth.put(uuid, new int[]{0, 0, 0, 0});
+            playerGrowth.put(uuid, new int[]{0, 0, 0, 0, 0, 0});
         } else {
             int[] data = growthDAO.getOrCreateGrowth(uuid, seasonId);
             playerGrowth.put(uuid, data);
@@ -404,6 +443,10 @@ public class EtherGrowthManager {
 
         int etherCap = growthDAO.getEtherCap(uuid);
         etherCapCache.put(uuid, etherCap);
+
+        // Load permanent upgrades
+        Map<String, Integer> upgrades = growthDAO.getAllUpgrades(uuid);
+        playerUpgrades.put(uuid, upgrades);
     }
 
     public void savePlayer(UUID uuid) {
@@ -412,7 +455,7 @@ public class EtherGrowthManager {
 
         int[] data = playerGrowth.get(uuid);
         if (data != null) {
-            growthDAO.updateGrowth(uuid, seasonId, data[0], data[1], data[2], data[3]);
+            growthDAO.updateGrowth(uuid, seasonId, data[0], data[1], data[2], data[3], data[4], data[5]);
         }
     }
 
@@ -420,6 +463,7 @@ public class EtherGrowthManager {
         savePlayer(uuid);
         playerGrowth.remove(uuid);
         etherCapCache.remove(uuid);
+        playerUpgrades.remove(uuid);
         // If player was in tower, restore inventory
         if (playersInTower.remove(uuid)) {
             savedInventories.remove(uuid);
@@ -514,6 +558,66 @@ public class EtherGrowthManager {
         for (UUID uuid : playerGrowth.keySet()) {
             savePlayer(uuid);
         }
+    }
+
+    // ========== Shard System ==========
+
+    public int getShards(UUID uuid) {
+        int[] data = playerGrowth.get(uuid);
+        return data != null ? data[4] : 0;
+    }
+
+    public int getShardsTotal(UUID uuid) {
+        int[] data = playerGrowth.get(uuid);
+        return data != null ? data[5] : 0;
+    }
+
+    public void addShards(UUID uuid, int amount) {
+        int[] data = playerGrowth.get(uuid);
+        if (data == null) return;
+        data[4] += amount;
+        data[5] += amount;
+    }
+
+    /**
+     * Spend shards. Returns true if successful, false if insufficient.
+     */
+    public boolean spendShards(UUID uuid, int amount) {
+        int[] data = playerGrowth.get(uuid);
+        if (data == null || data[4] < amount) return false;
+        data[4] -= amount;
+        return true;
+    }
+
+    // ========== Permanent Upgrades ==========
+
+    public int getUpgradeLevel(UUID uuid, String upgradeType) {
+        Map<String, Integer> upgrades = playerUpgrades.get(uuid);
+        if (upgrades == null) return 0;
+        return upgrades.getOrDefault(upgradeType, 0);
+    }
+
+    public void setUpgradeLevel(UUID uuid, String upgradeType, int level, int totalSpent) {
+        playerUpgrades.computeIfAbsent(uuid, k -> new HashMap<>()).put(upgradeType, level);
+        growthDAO.setUpgradeLevel(uuid, upgradeType, level, totalSpent);
+    }
+
+    /**
+     * Get tower bonus HP (from tower_hp upgrade). Each level = +2 HP (1 heart).
+     */
+    public double getTowerBonusHP(UUID uuid) {
+        return getUpgradeLevel(uuid, "tower_hp") * 2.0;
+    }
+
+    /**
+     * Get tower bonus attack damage (from tower_atk upgrade). Each level = +1.0 damage.
+     */
+    public double getTowerBonusAttack(UUID uuid) {
+        return getUpgradeLevel(uuid, "tower_atk") * 1.0;
+    }
+
+    public EtherGrowthDAO getGrowthDAO() {
+        return growthDAO;
     }
 
     public static int getMaxLevel() { return MAX_LEVEL; }

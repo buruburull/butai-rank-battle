@@ -81,7 +81,7 @@ butai-rank-battle/
 │   │   ├── FrameSetDAO.java       # FrameSet persistence
 │   │   ├── TeamDAO.java           # Team persistence
 │   │   ├── SeasonDAO.java         # Season/snapshot management
-│   │   └── EtherGrowthDAO.java   # Ether growth EP/level persistence
+│   │   └── EtherGrowthDAO.java   # Ether growth EP/level/shards persistence + player_upgrades
 │   ├── model/             # Data models
 │   │   ├── BRBPlayer.java         # Player data (UUID, rank, RP)
 │   │   ├── FrameData.java         # Frame definition (damage, cost, etc.)
@@ -108,20 +108,24 @@ butai-rank-battle/
 │   │   ├── ChatTabListener.java   # Rank prefix in chat/tab
 │   │   ├── BlockChangeListener.java # Block tracking for map restoration
 │   │   ├── FrameEffectListener.java # Right-click frame effects (Leap, Cloak, etc.)
-│   │   └── EtherGrowthListener.java # Mine/tower EP gain, death drop disable
+│   │   ├── EtherGrowthListener.java # Mine/tower EP gain, shard gain, death drop disable
+│   │   └── SkillItemListener.java  # Skill item activation (PowerCharge, Overdrive)
 │   ├── manager/
 │   │   ├── RankManager.java       # Player cache, rank/RP calculation, team management
 │   │   ├── QueueManager.java      # Solo/team/practice queues, matchmaking
 │   │   ├── FrameRegistry.java     # Frame definitions from frames.yml, arena maps
 │   │   ├── FrameSetManager.java   # Player frameset (8 slots), presets
 │   │   ├── EtherManager.java      # Ether (dynamic cap), leak, E-Shift
-│   │   ├── EtherGrowthManager.java # EP/Level, MOB tower floors, inventory save/restore
+│   │   ├── EtherGrowthManager.java # EP/Level/Shards, MOB tower, inventory save/restore, upgrades
+│   │   ├── ShopManager.java       # Shop items, shard rewards, purchase logic, upgrades
 │   │   ├── MineManager.java       # Mine ore coords, cobble→regen, SURVIVAL mode
-│   │   ├── LobbyManager.java      # NPCs, holograms, action bar, floor NPCs
+│   │   ├── LobbyManager.java      # NPCs, holograms, action bar, floor NPCs, shop NPCs
 │   │   └── DisconnectTracker.java # Disconnect penalty tracking
 │   ├── gui/
 │   │   ├── FrameSetGUI.java       # Frameset config GUI (54-slot chest)
-│   │   └── FrameSetGUIListener.java # GUI click/drag handling
+│   │   ├── FrameSetGUIListener.java # GUI click/drag handling
+│   │   ├── ShopGUI.java           # Shard shop GUI (54-slot chest)
+│   │   └── ShopGUIListener.java   # Shop purchase click handling
 │   └── arena/
 │       └── ArenaInstance.java     # Match lifecycle, judge, sudden death, block restore
 │
@@ -223,7 +227,7 @@ butai-rank-battle/
 
 ## Database Schema Summary
 
-Tables: players, weapon_rp, frame_master, player_framesets, teams, team_members, seasons, match_history, match_results, season_snapshots, ether_growth
+Tables: players, weapon_rp, frame_master, player_framesets, teams, team_members, seasons, match_history, match_results, season_snapshots, ether_growth, player_upgrades
 Views: player_overall_ranking, recent_matches, weapon_popularity
 See `docs/schema.sql` for full schema.
 
@@ -238,9 +242,10 @@ See `docs/schema.sql` for full schema.
 - **マッチ**: ソロ5分/チーム10分。ジャッジスコア=与ダメ×0.5+エーテル残×0.3+HP残×0.2
 - **サドンデス**: スコア差1%以内で突入。エーテルリーク3倍。追加60秒
 - **ブロック復元**: 試合中のブロック変更を記録し、試合終了時に自動復元
+- **シャードショップ**: MOB/鉱石でシャード獲得→タワー内ショップNPCでGUI購入。消耗品(ダイヤ剣等)、スキルアイテム(攻撃ブースト)、永続強化(エーテル上限+10/タワーHP+1♥)
 
 ---
 
-**Last Updated**: 2026-03-19
+**Last Updated**: 2026-03-25
 **Main Branch**: main
 **GitHub**: https://github.com/buruburull/border-rank-battle.git

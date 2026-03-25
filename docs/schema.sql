@@ -292,6 +292,8 @@ CREATE TABLE IF NOT EXISTS ether_growth (
     growth_level INT NOT NULL DEFAULT 0 COMMENT 'Current growth level (0-40)',
     ore_mined INT NOT NULL DEFAULT 0 COMMENT 'Total ores mined this season',
     mob_killed INT NOT NULL DEFAULT 0 COMMENT 'Total mobs killed this season',
+    shards INT NOT NULL DEFAULT 0 COMMENT 'Current shard balance',
+    shards_total INT NOT NULL DEFAULT 0 COMMENT 'Total shards earned this season',
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY (uuid, season_id),
@@ -301,6 +303,21 @@ CREATE TABLE IF NOT EXISTS ether_growth (
     INDEX idx_ep_total (ep_total)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Per-player ether growth progress per season';
+
+-- ============================================
+-- PLAYER UPGRADES TABLE (permanent upgrades)
+-- ============================================
+CREATE TABLE IF NOT EXISTS player_upgrades (
+    uuid CHAR(36) NOT NULL COMMENT 'Player UUID',
+    upgrade_type VARCHAR(32) NOT NULL COMMENT 'Upgrade type (ether_cap, tower_hp)',
+    upgrade_level INT NOT NULL DEFAULT 0 COMMENT 'Current upgrade level',
+    total_spent INT NOT NULL DEFAULT 0 COMMENT 'Total shards spent on this upgrade',
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (uuid, upgrade_type),
+    FOREIGN KEY (uuid) REFERENCES players(uuid) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Permanent upgrades purchased with shards';
 
 -- ============================================
 -- COMPOSITE INDEXES

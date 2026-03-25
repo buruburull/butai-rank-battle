@@ -34,6 +34,7 @@ public class LobbyManager {
     public static final NamespacedKey NPC_KEY = new NamespacedKey("butairankbattle", "npc_command");
     public static final NamespacedKey GROWTH_TELEPORT_KEY = new NamespacedKey("butairankbattle", "growth_teleport");
     public static final NamespacedKey FLOOR_ACTION_KEY = new NamespacedKey("butairankbattle", "floor_action");
+    public static final NamespacedKey SHOP_NPC_KEY = new NamespacedKey("butairankbattle", "shop_npc");
     public static final NamespacedKey HOLOGRAM_KEY = new NamespacedKey("butairankbattle", "hologram_type");
 
     private final BRBPlugin plugin;
@@ -73,6 +74,7 @@ public class LobbyManager {
                 spawnNPCs();
                 spawnGrowthNPCs();
                 spawnFloorNPCs();
+                spawnShopNPCs();
                 spawnHolograms();
                 startActionBarLoop();
                 startRankingUpdateLoop();
@@ -394,6 +396,76 @@ public class LobbyManager {
         spawnedHolograms.add(td.getUniqueId());
 
         logger.info("Floor NPC spawned: " + action + " at " + locToString(loc));
+    }
+
+    /**
+     * Spawn shop NPCs on each mob tower floor.
+     */
+    private void spawnShopNPCs() {
+        EtherGrowthManager gm = plugin.getEtherGrowthManager();
+        if (gm == null || gm.getFloorCount() == 0) return;
+
+        ConfigurationSection shopSection = framesConfig.getConfigurationSection("growth_zones.mob_tower.shop_npcs");
+
+        java.util.List<EtherGrowthManager.FloorData> floors = gm.getFloors();
+        for (int i = 0; i < floors.size(); i++) {
+            EtherGrowthManager.FloorData floor = floors.get(i);
+
+            // Check for configured shop NPC location for this floor
+            Location shopLoc = null;
+            if (shopSection != null && shopSection.contains(floor.id)) {
+                ConfigurationSection floorShop = shopSection.getConfigurationSection(floor.id);
+                if (floorShop != null && floor.playerSpawn != null) {
+                    double sx = floorShop.getDouble("x", floor.playerSpawn.getX() + 3);
+                    double sy = floorShop.getDouble("y", floor.playerSpawn.getY());
+                    double sz = floorShop.getDouble("z", floor.playerSpawn.getZ());
+                    float syaw = (float) floorShop.getDouble("yaw", 0);
+                    shopLoc = new Location(floor.playerSpawn.getWorld(), sx, sy, sz, syaw, 0);
+                }
+            }
+
+            // Fallback: place shop NPC near player spawn
+            if (shopLoc == null && floor.playerSpawn != null) {
+                shopLoc = floor.playerSpawn.clone().add(3, 0, 0);
+            }
+
+            if (shopLoc != null) {
+                spawnShopNPC(shopLoc, floor.name);
+            }
+        }
+    }
+
+    private void spawnShopNPC(Location loc, String floorName) {
+        World world = loc.getWorld();
+        if (world == null) return;
+
+        Villager villager = (Villager) world.spawnEntity(loc, EntityType.VILLAGER);
+        villager.setCustomName(null);
+        villager.setCustomNameVisible(false);
+        villager.setAI(false);
+        villager.setInvulnerable(true);
+        villager.setSilent(true);
+        villager.setCollidable(false);
+        villager.setProfession(Villager.Profession.ARMORER);
+        villager.setVillagerType(Villager.Type.PLAINS);
+
+        villager.getPersistentDataContainer().set(SHOP_NPC_KEY, PersistentDataType.STRING, "shop");
+        villager.getPersistentDataContainer().set(NPC_KEY, PersistentDataType.STRING, "");
+
+        spawnedNPCs.add(villager.getUniqueId());
+
+        // Name label
+        TextDisplay td = (TextDisplay) world.spawnEntity(
+                loc.clone().add(0, 2.3, 0), EntityType.TEXT_DISPLAY);
+        td.setText("§d§lシャードショップ\n§7右クリックで開く");
+        td.setBillboard(Display.Billboard.CENTER);
+        td.setAlignment(TextDisplay.TextAlignment.CENTER);
+        td.setSeeThrough(false);
+        td.setShadowed(true);
+        td.getPersistentDataContainer().set(HOLOGRAM_KEY, PersistentDataType.STRING, "npc_label");
+        spawnedHolograms.add(td.getUniqueId());
+
+        logger.info("Shop NPC spawned at " + floorName + " " + locToString(loc));
     }
 
     // ========== Hologram Management ==========

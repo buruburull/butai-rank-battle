@@ -33,6 +33,15 @@ public class LobbyListener implements Listener {
         Entity entity = event.getRightClicked();
         if (!(entity instanceof Villager)) return;
 
+        // Check for shop NPC
+        String shopTag = entity.getPersistentDataContainer()
+                .get(LobbyManager.SHOP_NPC_KEY, PersistentDataType.STRING);
+        if (shopTag != null && !shopTag.isEmpty()) {
+            event.setCancelled(true);
+            handleShopOpen(event.getPlayer());
+            return;
+        }
+
         // Check for growth teleport NPC
         String teleportTo = entity.getPersistentDataContainer()
                 .get(LobbyManager.GROWTH_TELEPORT_KEY, PersistentDataType.STRING);
@@ -67,6 +76,10 @@ public class LobbyListener implements Listener {
             EtherGrowthManager gm = plugin.getEtherGrowthManager();
             if (gm != null && gm.isInTower(player.getUniqueId())) {
                 gm.exitTower(player);
+                // Clean up skill item effects
+                if (plugin.getSkillItemListener() != null) {
+                    plugin.getSkillItemListener().onPlayerLeaveTower(player.getUniqueId());
+                }
             }
             // Remove mine pickaxe if present
             player.getInventory().remove(Material.IRON_PICKAXE);
@@ -167,13 +180,21 @@ public class LobbyListener implements Listener {
         }
     }
 
+    private void handleShopOpen(Player player) {
+        BRBPlugin plugin = BRBPlugin.getInstance();
+        if (plugin.getShopGUI() != null) {
+            plugin.getShopGUI().openShop(player);
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         Entity entity = event.getEntity();
         if (!(entity instanceof Villager)) return;
 
         if (entity.getPersistentDataContainer().has(LobbyManager.NPC_KEY, PersistentDataType.STRING) ||
-            entity.getPersistentDataContainer().has(LobbyManager.FLOOR_ACTION_KEY, PersistentDataType.STRING)) {
+            entity.getPersistentDataContainer().has(LobbyManager.FLOOR_ACTION_KEY, PersistentDataType.STRING) ||
+            entity.getPersistentDataContainer().has(LobbyManager.SHOP_NPC_KEY, PersistentDataType.STRING)) {
             event.setCancelled(true);
         }
     }
